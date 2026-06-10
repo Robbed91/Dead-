@@ -1,0 +1,75 @@
+extends Node
+
+signal resources_changed
+
+var resources: Dictionary = {}
+
+func _ready() -> void:
+	reset()
+
+func reset() -> void:
+	resources = {
+		"food": 80,
+		"water": 70,
+		"fuel": 30,
+		"power": 50,
+		"materials": 100,
+		"medicine": 15,
+		"ammo": 25,
+		"tools": 10,
+		"morale": 75,
+		"security": 45,
+		"infection_risk": 5,
+		"noise": 20,
+		"horde_threat": 25,
+		"beds": 6,
+		"population": 5,
+		"day_number": 1
+	}
+	resources_changed.emit()
+
+func get_value(key: String) -> int:
+	return int(resources.get(key, 0))
+
+func set_value(key: String, value: int) -> void:
+	resources[key] = max(value, 0)
+	resources_changed.emit()
+
+func add_resource(key: String, amount: int) -> void:
+	set_value(key, get_value(key) + amount)
+
+func spend_resource(key: String, amount: int) -> bool:
+	if get_value(key) < amount:
+		return false
+	add_resource(key, -amount)
+	return true
+
+func apply_daily_consumption(population: int) -> Dictionary:
+	var food_needed := population * 2
+	var water_needed := population * 2
+	var shortage := 0
+	if get_value("food") < food_needed:
+		shortage += food_needed - get_value("food")
+	if get_value("water") < water_needed:
+		shortage += water_needed - get_value("water")
+	add_resource("food", -food_needed)
+	add_resource("water", -water_needed)
+	add_resource("noise", -5)
+	add_resource("horde_threat", 3)
+	if shortage > 0:
+		add_resource("morale", -shortage * 2)
+		add_resource("infection_risk", 1)
+	else:
+		add_resource("morale", 1)
+	return {"food_needed": food_needed, "water_needed": water_needed, "shortage": shortage}
+
+func advance_day() -> void:
+	add_resource("day_number", 1)
+
+func to_dict() -> Dictionary:
+	return resources.duplicate(true)
+
+func from_dict(data: Dictionary) -> void:
+	resources = data.duplicate(true)
+	resources_changed.emit()
+

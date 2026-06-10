@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <rect width="128" height="128" fill="#111317"/>
+  <path d="M16 86h96v20H16z" fill="#2b3036"/>
+  <path d="M26 42h76v44H26z" fill="#404851"/>
+  <path d="M38 54h18v32H38zM72 54h18v32H72z" fill="#f28c28"/>
+  <path d="M14 42h100l-12-16H26z" fill="#a7332f"/>
+  <text x="64" y="118" fill="#e8e0d2" font-size="14" text-anchor="middle" font-family="Arial">DS</text>
+</svg>
+
