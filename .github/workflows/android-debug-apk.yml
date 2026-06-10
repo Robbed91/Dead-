@@ -101,7 +101,7 @@ jobs:
       - name: Export debug APK
         run: |
           mkdir -p export
-          ./godot --headless --path . --export-debug "${EXPORT_PRESET}" "${APK_PATH}"
+          ./godot --headless --path . --install-android-build-template --export-debug "${EXPORT_PRESET}" "${APK_PATH}"
           test -f "${APK_PATH}"
 
       - name: Upload APK artifact
