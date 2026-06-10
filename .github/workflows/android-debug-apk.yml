@@ -98,10 +98,16 @@ jobs:
         run: |
           ./godot --headless --path . --quit
 
+      - name: Install Android build template
+        run: |
+          ./godot --headless --path . --install-android-build-template
+          test -d android
+          find android -maxdepth 2 -type f | sort | head -50
+
       - name: Export debug APK
         run: |
           mkdir -p export
-          ./godot --headless --path . --install-android-build-template --export-debug "${EXPORT_PRESET}" "${APK_PATH}"
+          ./godot --headless --path . --export-debug "${EXPORT_PRESET}" "${APK_PATH}"
           test -f "${APK_PATH}"
 
       - name: Upload APK artifact
