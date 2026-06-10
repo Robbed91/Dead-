@@ -108,6 +108,20 @@ Set it to **Portrait** if you change it later.
 
 ## Export A Debug APK
 
+### From GitHub Actions
+
+1. Open the GitHub repo on desktop or mobile.
+2. Go to **Actions**.
+3. Select **Build Android Debug APK**.
+4. Tap **Run workflow**.
+5. Open the completed run.
+6. Download the `dead-shift-debug-apk` artifact.
+7. Extract the downloaded ZIP to get `dead-shift-debug.apk`.
+
+Android will warn that the APK is from outside the Play Store. That is expected for local debug testing.
+
+### From Godot Locally
+
 1. Open **Project > Export**.
 2. Select the included **Android Debug** preset.
 3. Confirm the package name is suitable for local testing: `com.prototype.deadshift`.
