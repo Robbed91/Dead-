@@ -99,12 +99,17 @@ jobs:
           ./godot --headless --path . --quit
 
       - name: Install Android build template
+        timeout-minutes: 2
         run: |
-          ./godot --headless --path . --install-android-build-template
-          test -d android
+          rm -rf android
+          mkdir -p android
+          unzip -q "${HOME}/.local/share/godot/export_templates/${GODOT_VERSION}.${GODOT_RELEASE}/android_source.zip" -d android
+          chmod +x android/gradlew || true
+          test -f android/build.gradle
           find android -maxdepth 2 -type f | sort | head -50
 
       - name: Export debug APK
+        timeout-minutes: 20
         run: |
           mkdir -p export
           ./godot --headless --path . --export-debug "${EXPORT_PRESET}" "${APK_PATH}"
