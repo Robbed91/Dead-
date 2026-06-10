@@ -102,11 +102,11 @@ jobs:
         timeout-minutes: 2
         run: |
           rm -rf android
-          mkdir -p android
-          unzip -q "${HOME}/.local/share/godot/export_templates/${GODOT_VERSION}.${GODOT_RELEASE}/android_source.zip" -d android
-          chmod +x android/gradlew || true
-          test -f android/build.gradle
-          find android -maxdepth 2 -type f | sort | head -50
+          mkdir -p android/build
+          unzip -q "${HOME}/.local/share/godot/export_templates/${GODOT_VERSION}.${GODOT_RELEASE}/android_source.zip" -d android/build
+          chmod +x android/build/gradlew || true
+          test -f android/build/build.gradle
+          find android/build -maxdepth 2 -type f | sort | head -50
 
       - name: Export debug APK
         timeout-minutes: 20
