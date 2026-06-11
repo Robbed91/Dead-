@@ -106,43 +106,43 @@ func _complete_job(survivor_id: int) -> void:
 	job_completed.emit(survivor_id, task, message)
 
 func _apply_reward(survivor_id: int, task: String) -> String:
-	var name := SurvivorManager.get_survivor_name(survivor_id)
+	var survivor_name := SurvivorManager.get_survivor_name(survivor_id)
 	var job := get_job(survivor_id)
 	match task:
 		"Rest":
 			SurvivorManager.heal_survivor(survivor_id, 4)
-			return "%s rested and recovered health." % name
+			return "%s rested and recovered health." % survivor_name
 		"Guard":
 			ResourceManager.add_resource("security", 1)
 			ResourceManager.add_resource("horde_threat", -1)
-			return "%s patrolled the perimeter." % name
+			return "%s patrolled the perimeter." % survivor_name
 		"Build":
 			ResourceManager.add_resource("materials", 1)
 			ResourceManager.add_resource("noise", 1)
-			return "%s fabricated useful fittings." % name
+			return "%s fabricated useful fittings." % survivor_name
 		"Repair":
 			var building := BuildingManager.repair_lowest_condition(5)
-			return "%s repaired %s." % [name, building.get("name", "the base")]
+			return "%s repaired %s." % [survivor_name, building.get("name", "the base")]
 		"Scavenge":
 			var location := String(job.get("location", ""))
 			if location != "":
 				var result := ScavengeManager.run_scavenge(location, survivor_id, false)
-				return "%s returned from %s. %s" % [name, location, result.get("message", "Scavenge complete.")]
+				return "%s returned from %s. %s" % [survivor_name, location, result.get("message", "Scavenge complete.")]
 			ResourceManager.add_resource("materials", randi_range(1, 4))
 			ResourceManager.add_resource("noise", 1)
-			return "%s hauled in useful salvage." % name
+			return "%s hauled in useful salvage." % survivor_name
 		"Medical":
 			SurvivorManager.treat_worst_survivor(5, 2)
-			return "%s treated injuries and infection risk." % name
+			return "%s treated injuries and infection risk." % survivor_name
 		"Cook":
 			ResourceManager.add_resource("food", 1)
 			ResourceManager.add_resource("morale", 1)
-			return "%s stretched rations for the colony." % name
+			return "%s stretched rations for the colony." % survivor_name
 		"Scout":
 			ResourceManager.add_resource("horde_threat", -2)
 			ResourceManager.add_resource("noise", 1)
-			return "%s mapped horde movement." % name
-	return "%s completed %s." % [name, task]
+			return "%s mapped horde movement." % survivor_name
+	return "%s completed %s." % [survivor_name, task]
 
 func _target_for_task(task: String) -> String:
 	match task:

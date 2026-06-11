@@ -85,8 +85,8 @@ func resolve_night() -> Dictionary:
 		var breach := attack_strength - defence_strength
 		var damaged := BuildingManager.damage_random(clamp(breach, 8, 30))
 		var injured := SurvivorManager.injure_random(randi_range(10, 28), 6)
-		ResourceManager.add_resource("materials", -int(clamp(breach / 2, 3, 20)))
-		ResourceManager.add_resource("ammo", -int(clamp(breach / 4, 2, 10)))
+		ResourceManager.add_resource("materials", -int(clamp(float(breach) / 2.0, 3.0, 20.0)))
+		ResourceManager.add_resource("ammo", -int(clamp(float(breach) / 4.0, 2.0, 10.0)))
 		ResourceManager.add_resource("morale", -8)
 		ResourceManager.add_resource("infection_risk", 4)
 		ResourceManager.add_resource("horde_threat", 3)

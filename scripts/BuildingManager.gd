@@ -62,7 +62,7 @@ func get_fortified_bonus() -> int:
 		if building.get("status", "") == "Fortified":
 			bonus += 15
 		elif building.get("status", "") == "Operational":
-			bonus += int(int(building.get("security", 0)) / 5)
+			bonus += int(floor(float(building.get("security", 0)) / 5.0))
 	return bonus
 
 func get_upgrade_defence_bonus() -> int:
@@ -169,7 +169,7 @@ func perform_action(id: int, action: String) -> Dictionary:
 		"Claim":
 			if building["status"] == "Cleared":
 				building["status"] = "Claimed"
-				ResourceManager.add_resource("security", int(int(building["security"]) / 4))
+				ResourceManager.add_resource("security", int(float(building["security"]) / 4.0))
 				if building["type"] == "Living":
 					ResourceManager.add_resource("beds", int(building["capacity"]))
 				_emit()

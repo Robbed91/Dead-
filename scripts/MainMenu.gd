@@ -23,8 +23,8 @@ func _process(delta: float) -> void:
 		backdrop_layer.queue_redraw()
 
 func _build_theme() -> void:
-	var theme := Theme.new()
-	theme.default_font_size = 16
+	var ui_theme := Theme.new()
+	ui_theme.default_font_size = 16
 	var button_style := StyleBoxFlat.new()
 	button_style.bg_color = Color(0.082, 0.102, 0.125, 0.9)
 	button_style.border_color = Color("#47515a")
@@ -39,12 +39,12 @@ func _build_theme() -> void:
 	var pressed := button_style.duplicate()
 	pressed.bg_color = Color("#30200f")
 	pressed.border_color = ORANGE
-	theme.set_stylebox("normal", "Button", button_style)
-	theme.set_stylebox("hover", "Button", button_style)
-	theme.set_stylebox("pressed", "Button", pressed)
-	theme.set_color("font_color", "Button", TEXT)
-	theme.set_color("font_color", "Label", TEXT)
-	set_theme(theme)
+	ui_theme.set_stylebox("normal", "Button", button_style)
+	ui_theme.set_stylebox("hover", "Button", button_style)
+	ui_theme.set_stylebox("pressed", "Button", pressed)
+	ui_theme.set_color("font_color", "Button", TEXT)
+	ui_theme.set_color("font_color", "Label", TEXT)
+	set_theme(ui_theme)
 
 func _build_menu() -> void:
 	var image := TextureRect.new()
@@ -126,30 +126,30 @@ func _build_menu() -> void:
 		continue_button.disabled = summary.is_empty()
 
 func _draw_backdrop(node: Control) -> void:
-	var size := node.size
-	node.draw_rect(Rect2(Vector2.ZERO, size), Color(0.0, 0.0, 0.0, 0.22), true)
-	node.draw_rect(Rect2(Vector2.ZERO, Vector2(size.x, size.y * 0.36)), Color(0.0, 0.0, 0.0, 0.34), true)
+	var view_size := node.size
+	node.draw_rect(Rect2(Vector2.ZERO, view_size), Color(0.0, 0.0, 0.0, 0.22), true)
+	node.draw_rect(Rect2(Vector2.ZERO, Vector2(view_size.x, view_size.y * 0.36)), Color(0.0, 0.0, 0.0, 0.34), true)
 	for i in range(8):
-		var drift := fmod(menu_time * (8.0 + float(i)) + float(i) * 97.0, size.x + 220.0) - 110.0
-		var y := size.y * (0.2 + float(i % 4) * 0.12)
+		var drift := fmod(menu_time * (8.0 + float(i)) + float(i) * 97.0, view_size.x + 220.0) - 110.0
+		var y := view_size.y * (0.2 + float(i % 4) * 0.12)
 		var fog := Color(0.45, 0.52, 0.56, 0.045)
 		node.draw_rect(Rect2(Vector2(drift, y + 12.0), Vector2(220, 14)), fog, true)
 		node.draw_circle(Vector2(drift, y + 19.0), 19.0, fog)
 		node.draw_circle(Vector2(drift + 220.0, y + 19.0), 19.0, fog)
 	for i in range(9):
-		var p := Vector2(size.x * (0.18 + fmod(float(i) * 0.083 + menu_time * 0.01, 0.56)), size.y * (0.62 + fmod(float(i) * 0.067, 0.2)))
+		var p := Vector2(view_size.x * (0.18 + fmod(float(i) * 0.083 + menu_time * 0.01, 0.56)), view_size.y * (0.62 + fmod(float(i) * 0.067, 0.2)))
 		_draw_menu_zombie(node, p + Vector2(0, sin(menu_time * 3.0 + float(i)) * 2.0), 0.7 + float(i % 3) * 0.1)
 	var glow := 0.15 + (sin(menu_time * 4.0) + 1.0) * 0.04
-	node.draw_circle(size * Vector2(0.74, 0.31), 38, Color(RED.r, RED.g, RED.b, glow))
+	node.draw_circle(view_size * Vector2(0.74, 0.31), 38, Color(RED.r, RED.g, RED.b, glow))
 
-func _draw_menu_zombie(node: Control, pos: Vector2, scale: float) -> void:
+func _draw_menu_zombie(node: Control, pos: Vector2, draw_scale: float) -> void:
 	var color := Color("#10161a")
-	node.draw_circle(pos + Vector2(0, -17) * scale, 5.0 * scale, color)
-	node.draw_line(pos + Vector2(0, -12) * scale, pos + Vector2(-2, 10) * scale, color, 4.0 * scale)
-	node.draw_line(pos + Vector2(-2, -6) * scale, pos + Vector2(-12, 2) * scale, color, 3.0 * scale)
-	node.draw_line(pos + Vector2(0, -5) * scale, pos + Vector2(10, 4) * scale, color, 3.0 * scale)
-	node.draw_line(pos + Vector2(-2, 10) * scale, pos + Vector2(-9, 24) * scale, color, 3.0 * scale)
-	node.draw_line(pos + Vector2(-1, 10) * scale, pos + Vector2(7, 23) * scale, color, 3.0 * scale)
+	node.draw_circle(pos + Vector2(0, -17) * draw_scale, 5.0 * draw_scale, color)
+	node.draw_line(pos + Vector2(0, -12) * draw_scale, pos + Vector2(-2, 10) * draw_scale, color, 4.0 * draw_scale)
+	node.draw_line(pos + Vector2(-2, -6) * draw_scale, pos + Vector2(-12, 2) * draw_scale, color, 3.0 * draw_scale)
+	node.draw_line(pos + Vector2(0, -5) * draw_scale, pos + Vector2(10, 4) * draw_scale, color, 3.0 * draw_scale)
+	node.draw_line(pos + Vector2(-2, 10) * draw_scale, pos + Vector2(-9, 24) * draw_scale, color, 3.0 * draw_scale)
+	node.draw_line(pos + Vector2(-1, 10) * draw_scale, pos + Vector2(7, 23) * draw_scale, color, 3.0 * draw_scale)
 
 func _add_button(parent: VBoxContainer, text: String, callback: Callable, accent: Color) -> Button:
 	var button := Button.new()

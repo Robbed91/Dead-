@@ -17,8 +17,8 @@ func _ready() -> void:
 	_refresh()
 
 func _build_theme() -> void:
-	var theme := Theme.new()
-	theme.default_font_size = 16
+	var ui_theme := Theme.new()
+	ui_theme.default_font_size = 16
 	var button_style := StyleBoxFlat.new()
 	button_style.bg_color = Color("#242c33")
 	button_style.border_color = Color("#46515c")
@@ -33,12 +33,12 @@ func _build_theme() -> void:
 	var pressed := button_style.duplicate()
 	pressed.bg_color = Color("#3a2410")
 	pressed.border_color = ORANGE
-	theme.set_stylebox("normal", "Button", button_style)
-	theme.set_stylebox("hover", "Button", button_style)
-	theme.set_stylebox("pressed", "Button", pressed)
-	theme.set_color("font_color", "Button", TEXT)
-	theme.set_color("font_color", "Label", TEXT)
-	set_theme(theme)
+	ui_theme.set_stylebox("normal", "Button", button_style)
+	ui_theme.set_stylebox("hover", "Button", button_style)
+	ui_theme.set_stylebox("pressed", "Button", pressed)
+	ui_theme.set_color("font_color", "Button", TEXT)
+	ui_theme.set_color("font_color", "Label", TEXT)
+	set_theme(ui_theme)
 
 func _build_layout() -> void:
 	set_anchors_preset(Control.PRESET_FULL_RECT)

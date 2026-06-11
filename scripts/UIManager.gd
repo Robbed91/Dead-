@@ -88,8 +88,8 @@ func _process(delta: float) -> void:
 		map.queue_redraw()
 
 func _build_theme() -> void:
-	var theme := Theme.new()
-	theme.default_font_size = 13
+	var ui_theme := Theme.new()
+	ui_theme.default_font_size = 13
 	var button_style := StyleBoxFlat.new()
 	button_style.bg_color = PANEL_LIGHT
 	button_style.border_color = Color("#46515c")
@@ -104,12 +104,12 @@ func _build_theme() -> void:
 	var pressed_style := button_style.duplicate()
 	pressed_style.bg_color = Color("#3a2410")
 	pressed_style.border_color = ORANGE
-	theme.set_stylebox("normal", "Button", button_style)
-	theme.set_stylebox("hover", "Button", button_style)
-	theme.set_stylebox("pressed", "Button", pressed_style)
-	theme.set_color("font_color", "Button", TEXT)
-	theme.set_color("font_color", "Label", TEXT)
-	set_theme(theme)
+	ui_theme.set_stylebox("normal", "Button", button_style)
+	ui_theme.set_stylebox("hover", "Button", button_style)
+	ui_theme.set_stylebox("pressed", "Button", pressed_style)
+	ui_theme.set_color("font_color", "Button", TEXT)
+	ui_theme.set_color("font_color", "Label", TEXT)
+	set_theme(ui_theme)
 
 func _build_layout() -> void:
 	set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -124,8 +124,8 @@ func _build_layout() -> void:
 	root.offset_left = 6
 	root.offset_top = 5
 	root.offset_right = -6
-	root.offset_bottom = -18
-	root.add_theme_constant_override("separation", 5)
+	root.offset_bottom = -72
+	root.add_theme_constant_override("separation", 4)
 	add_child(root)
 
 	_build_top_bar(root)
@@ -135,17 +135,17 @@ func _build_layout() -> void:
 
 func _build_top_bar(root: VBoxContainer) -> void:
 	var top := HBoxContainer.new()
-	top.custom_minimum_size = Vector2(0, 70)
-	top.add_theme_constant_override("separation", 6)
+	top.custom_minimum_size = Vector2(0, 58)
+	top.add_theme_constant_override("separation", 4)
 	root.add_child(top)
 
-	var logo := _add_panel(top, Vector2(200, 0))
-	logo.add_child(_label("DEAD SHIFT", 32, ORANGE, HORIZONTAL_ALIGNMENT_CENTER))
-	logo.add_child(_label("COLONY SURVIVAL", 12, RED, HORIZONTAL_ALIGNMENT_CENTER))
+	var logo := _add_panel(top, Vector2(166, 0))
+	logo.add_child(_label("DEAD SHIFT", 26, ORANGE, HORIZONTAL_ALIGNMENT_CENTER))
+	logo.add_child(_label("COLONY SURVIVAL", 10, RED, HORIZONTAL_ALIGNMENT_CENTER))
 
-	var day_panel := _add_panel(top, Vector2(90, 0))
-	day_panel.add_child(_label("DAY", 12, MUTED, HORIZONTAL_ALIGNMENT_CENTER))
-	day_panel.add_child(_label("1", 28, TEXT, HORIZONTAL_ALIGNMENT_CENTER, "day_value"))
+	var day_panel := _add_panel(top, Vector2(74, 0))
+	day_panel.add_child(_label("DAY", 10, MUTED, HORIZONTAL_ALIGNMENT_CENTER))
+	day_panel.add_child(_label("1", 22, TEXT, HORIZONTAL_ALIGNMENT_CENTER, "day_value"))
 	phase_label = _label("MORNING", 9, ORANGE, HORIZONTAL_ALIGNMENT_CENTER)
 	day_panel.add_child(phase_label)
 
@@ -162,12 +162,12 @@ func _build_top_bar(root: VBoxContainer) -> void:
 func _build_middle(root: VBoxContainer) -> void:
 	var middle := HBoxContainer.new()
 	middle.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	middle.add_theme_constant_override("separation", 5)
+	middle.add_theme_constant_override("separation", 4)
 	root.add_child(middle)
 
 	var left := VBoxContainer.new()
-	left.custom_minimum_size = Vector2(230, 0)
-	left.add_theme_constant_override("separation", 5)
+	left.custom_minimum_size = Vector2(205, 0)
+	left.add_theme_constant_override("separation", 4)
 	middle.add_child(left)
 	_build_left_panel(left)
 
@@ -177,28 +177,28 @@ func _build_middle(root: VBoxContainer) -> void:
 	middle.add_child(estate_board)
 
 	var right := VBoxContainer.new()
-	right.custom_minimum_size = Vector2(250, 0)
-	right.add_theme_constant_override("separation", 5)
+	right.custom_minimum_size = Vector2(230, 0)
+	right.add_theme_constant_override("separation", 4)
 	middle.add_child(right)
 	_build_right_panel(right)
 
 func _build_left_panel(left: VBoxContainer) -> void:
-	var objective := _add_panel(left, Vector2(0, 118))
+	var objective := _add_panel(left, Vector2(0, 92))
 	objective.add_child(_label("CURRENT OBJECTIVE", 13, GREEN))
 	objective_body = _label("", 13, TEXT)
 	objective_body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	objective.add_child(objective_body)
 
-	var alerts := _add_panel(left, Vector2(0, 126))
+	var alerts := _add_panel(left, Vector2(0, 80))
 	alerts.add_child(_label("ALERTS", 13, RED))
 	alerts_box = VBoxContainer.new()
 	alerts_box.add_theme_constant_override("separation", 3)
 	alerts.add_child(alerts_box)
 
-	var map := _add_panel(left, Vector2(0, 140))
+	var map := _add_panel(left, Vector2(0, 104))
 	map.add_child(_label("ESTATE MAP", 13, TEXT))
 	var grid := Control.new()
-	grid.custom_minimum_size = Vector2(0, 82)
+	grid.custom_minimum_size = Vector2(0, 48)
 	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	grid.draw.connect(_draw_estate_minimap.bind(grid))
 	map.add_child(grid)
@@ -206,15 +206,15 @@ func _build_left_panel(left: VBoxContainer) -> void:
 	scout.pressed.connect(_show_scavenge_popup)
 	map.add_child(scout)
 
-	var log := _add_panel(left, Vector2(0, 0))
-	log.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	log.add_child(_label("EVENT LOG", 13, ORANGE))
+	var log_panel := _add_panel(left, Vector2(0, 0))
+	log_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	log_panel.add_child(_label("EVENT LOG", 13, ORANGE))
 	event_log_box = VBoxContainer.new()
 	event_log_box.add_theme_constant_override("separation", 2)
-	log.add_child(event_log_box)
+	log_panel.add_child(event_log_box)
 
 func _build_right_panel(right: VBoxContainer) -> void:
-	var current := _add_panel(right, Vector2(0, 96))
+	var current := _add_panel(right, Vector2(0, 82))
 	current.add_child(_label("CURRENT BUILDING", 13, TEXT))
 	selected_building_label = _label("", 12, TEXT)
 	selected_building_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -232,7 +232,7 @@ func _build_right_panel(right: VBoxContainer) -> void:
 	survivors_box.add_theme_constant_override("separation", 4)
 	survivor_scroll.add_child(survivors_box)
 
-	var defence := _add_panel(right, Vector2(0, 118))
+	var defence := _add_panel(right, Vector2(0, 96))
 	defence.add_child(_label("NIGHT DEFENCE", 13, RED))
 	night_preview_label = _label("", 11, TEXT)
 	night_preview_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -244,12 +244,12 @@ func _build_right_panel(right: VBoxContainer) -> void:
 
 func _build_command_bar(root: VBoxContainer) -> void:
 	var bottom := HBoxContainer.new()
-	bottom.custom_minimum_size = Vector2(0, 104)
+	bottom.custom_minimum_size = Vector2(0, 76)
 	bottom.add_theme_constant_override("separation", 4)
 	root.add_child(bottom)
 
-	var tabs := _add_panel(bottom, Vector2(332, 0))
-	tabs.add_child(_label("BUILD & MANAGE", 13, TEXT))
+	var tabs := _add_panel(bottom, Vector2(288, 0))
+	tabs.add_child(_label("BUILD & MANAGE", 10, TEXT))
 	var tab_grid := GridContainer.new()
 	tab_grid.columns = 3
 	tab_grid.add_theme_constant_override("h_separation", 4)
@@ -257,15 +257,15 @@ func _build_command_bar(root: VBoxContainer) -> void:
 	tabs.add_child(tab_grid)
 	for tab in TABS:
 		var button := _small_button(tab)
-		button.custom_minimum_size = Vector2(100, 32)
-		button.add_theme_font_size_override("font_size", 11)
+		button.custom_minimum_size = Vector2(88, 23)
+		button.add_theme_font_size_override("font_size", 9)
 		button.pressed.connect(_switch_tab.bind(tab))
 		tab_grid.add_child(button)
 		tab_buttons[tab] = button
 
 	var commands := _add_panel(bottom, Vector2(0, 0))
 	commands.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	command_title = _label("BUILDINGS", 13, ORANGE)
+	command_title = _label("BUILDINGS", 11, ORANGE)
 	commands.add_child(command_title)
 	var command_scroll := ScrollContainer.new()
 	command_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
@@ -277,11 +277,11 @@ func _build_command_bar(root: VBoxContainer) -> void:
 	command_body.add_theme_constant_override("separation", 5)
 	command_scroll.add_child(command_body)
 
-	var end := _add_panel(bottom, Vector2(170, 0))
-	end.add_child(_label("NEXT PHASE: NIGHT", 12, MUTED, HORIZONTAL_ALIGNMENT_CENTER))
+	var end := _add_panel(bottom, Vector2(142, 0))
+	end.add_child(_label("NEXT PHASE", 10, MUTED, HORIZONTAL_ALIGNMENT_CENTER))
 	end_day_button = _small_button("END DAY")
-	end_day_button.custom_minimum_size = Vector2(0, 46)
-	end_day_button.add_theme_font_size_override("font_size", 20)
+	end_day_button.custom_minimum_size = Vector2(0, 34)
+	end_day_button.add_theme_font_size_override("font_size", 16)
 	end_day_button.add_theme_color_override("font_color", RED.lightened(0.25))
 	end_day_button.pressed.connect(func(): _show_result(GameManager.end_day()["message"]))
 	end.add_child(end_day_button)
@@ -289,30 +289,14 @@ func _build_command_bar(root: VBoxContainer) -> void:
 func _build_quick_bar() -> void:
 	quick_bar = HBoxContainer.new()
 	quick_bar.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-	quick_bar.offset_left = -466
-	quick_bar.offset_top = 82
+	quick_bar.offset_left = -96
+	quick_bar.offset_top = 66
 	quick_bar.offset_right = -10
-	quick_bar.offset_bottom = 132
+	quick_bar.offset_bottom = 108
 	quick_bar.add_theme_constant_override("separation", 6)
 	add_child(quick_bar)
-	var build := _small_button("BUILD")
-	build.custom_minimum_size = Vector2(78, 44)
-	build.pressed.connect(_show_build_popup)
-	quick_bar.add_child(build)
-	var scout := _small_button("SCOUT")
-	scout.custom_minimum_size = Vector2(84, 44)
-	scout.pressed.connect(_show_scavenge_popup)
-	quick_bar.add_child(scout)
-	var defence := _small_button("DEFEND")
-	defence.custom_minimum_size = Vector2(86, 44)
-	defence.pressed.connect(_show_defence_popup)
-	quick_bar.add_child(defence)
-	var save := _small_button("SAVE")
-	save.custom_minimum_size = Vector2(76, 44)
-	save.pressed.connect(func(): _show_result("Saved." if GameManager.manual_save() else "Save failed."))
-	quick_bar.add_child(save)
 	var menu := _small_button("MENU")
-	menu.custom_minimum_size = Vector2(82, 44)
+	menu.custom_minimum_size = Vector2(86, 42)
 	menu.pressed.connect(_show_game_menu)
 	quick_bar.add_child(menu)
 
@@ -358,23 +342,23 @@ func _estate_board() -> PanelContainer:
 	return panel
 
 func _draw_estate_map(map: Control) -> void:
-	var size := map.size
-	map.draw_rect(Rect2(Vector2.ZERO, size), Color("#101519"), true)
+	var map_size := map.size
+	map.draw_rect(Rect2(Vector2.ZERO, map_size), Color("#101519"), true)
 	var background := _stage_background()
-	map.draw_texture_rect(background, Rect2(Vector2.ZERO, size), false, Color(0.96, 0.96, 0.96, 0.94))
-	map.draw_rect(Rect2(Vector2.ZERO, size), Color(0.0, 0.0, 0.0, 0.12), true)
+	map.draw_texture_rect(background, Rect2(Vector2.ZERO, map_size), false, Color(0.96, 0.96, 0.96, 0.94))
+	map.draw_rect(Rect2(Vector2.ZERO, map_size), Color(0.0, 0.0, 0.0, 0.12), true)
 	_draw_growth_perimeter(map)
 	var fire_pulse := 0.72 + (sin(ambient_time * 6.0) + 1.0) * 0.12
-	map.draw_circle(size * Vector2(0.48, 0.5), 34, Color(0.843, 0.467, 0.145, 0.16 * fire_pulse))
-	map.draw_circle(size * Vector2(0.48, 0.5), 18, Color(0.843, 0.467, 0.145, 0.62 * fire_pulse))
-	map.draw_circle(size * Vector2(0.48, 0.5), 9, Color(0.3, 0.12, 0.035, 0.8))
+	map.draw_circle(map_size * Vector2(0.48, 0.5), 34, Color(0.843, 0.467, 0.145, 0.16 * fire_pulse))
+	map.draw_circle(map_size * Vector2(0.48, 0.5), 18, Color(0.843, 0.467, 0.145, 0.62 * fire_pulse))
+	map.draw_circle(map_size * Vector2(0.48, 0.5), 9, Color(0.3, 0.12, 0.035, 0.8))
 	for i in range(18):
-		var pos := Vector2(fmod(float(i * 73), size.x), fmod(float(i * 47 + 31), size.y))
+		var pos := Vector2(fmod(float(i * 73), map_size.x), fmod(float(i * 47 + 31), map_size.y))
 		_draw_map_light(map, pos, 2.0 + sin(ambient_time * 2.4 + float(i)) * 0.6, ORANGE)
-	var threat_count: int = clampi(int(ResourceManager.get_value("horde_threat") / 6), 2, 13)
+	var threat_count: int = clampi(int(float(ResourceManager.get_value("horde_threat")) / 6.0), 2, 13)
 	for i in range(threat_count):
 		var wave: float = sin(ambient_time * 1.4 + i)
-		var pos: Vector2 = Vector2(size.x * (0.05 + float(i) / maxf(1.0, float(threat_count)) * 0.9), size.y * 0.94 + wave * 4.0)
+		var pos: Vector2 = Vector2(map_size.x * (0.05 + float(i) / maxf(1.0, float(threat_count)) * 0.9), map_size.y * 0.94 + wave * 4.0)
 		_draw_zombie_silhouette(map, pos, 0.75, RED.darkened(0.15))
 	for building in BuildingManager.buildings:
 		var rect := _building_rect(map, building)
@@ -416,47 +400,47 @@ func _draw_expansion_marker(map: Control, building: Dictionary, rect: Rect2) -> 
 	map.draw_circle(center, 4.0, color)
 
 func _draw_growth_perimeter(map: Control) -> void:
-	var size := map.size
+	var map_size := map.size
 	var tier_index := GameManager.colony_tier_index
 	var color := GREEN if tier_index >= 2 else ORANGE
 	for i in range(tier_index + 1):
 		var inset := 10.0 + float(i) * 10.0
-		map.draw_rect(Rect2(Vector2(inset, inset), size - Vector2(inset * 2.0, inset * 2.0)), Color(color.r, color.g, color.b, 0.08), false, 2)
+		map.draw_rect(Rect2(Vector2(inset, inset), map_size - Vector2(inset * 2.0, inset * 2.0)), Color(color.r, color.g, color.b, 0.08), false, 2)
 
 func _draw_map_light(map: Control, pos: Vector2, radius: float, color: Color) -> void:
 	map.draw_circle(pos, radius * 4.0, Color(color.r, color.g, color.b, 0.08))
 	map.draw_circle(pos, radius, Color(color.r, color.g, color.b, 0.72))
 
-func _draw_zombie_silhouette(map: Control, pos: Vector2, scale: float, color: Color) -> void:
+func _draw_zombie_silhouette(map: Control, pos: Vector2, draw_scale: float, color: Color) -> void:
 	var sway := sin(ambient_time * 2.2 + pos.x * 0.01) * 2.0
-	map.draw_circle(pos + Vector2(sway, -10) * scale, 4.5 * scale, color)
-	map.draw_line(pos + Vector2(sway, -6) * scale, pos + Vector2(-1, 7) * scale, color, 3.0 * scale)
-	map.draw_line(pos + Vector2(-1, -2) * scale, pos + Vector2(-9, 5) * scale, color, 2.0 * scale)
-	map.draw_line(pos + Vector2(0, -2) * scale, pos + Vector2(8, 4) * scale, color, 2.0 * scale)
-	map.draw_line(pos + Vector2(-1, 7) * scale, pos + Vector2(-6, 15) * scale, color, 2.0 * scale)
-	map.draw_line(pos + Vector2(0, 7) * scale, pos + Vector2(7, 15) * scale, color, 2.0 * scale)
+	map.draw_circle(pos + Vector2(sway, -10) * draw_scale, 4.5 * draw_scale, color)
+	map.draw_line(pos + Vector2(sway, -6) * draw_scale, pos + Vector2(-1, 7) * draw_scale, color, 3.0 * draw_scale)
+	map.draw_line(pos + Vector2(-1, -2) * draw_scale, pos + Vector2(-9, 5) * draw_scale, color, 2.0 * draw_scale)
+	map.draw_line(pos + Vector2(0, -2) * draw_scale, pos + Vector2(8, 4) * draw_scale, color, 2.0 * draw_scale)
+	map.draw_line(pos + Vector2(-1, 7) * draw_scale, pos + Vector2(-6, 15) * draw_scale, color, 2.0 * draw_scale)
+	map.draw_line(pos + Vector2(0, 7) * draw_scale, pos + Vector2(7, 15) * draw_scale, color, 2.0 * draw_scale)
 
-func _draw_building_use_icon(map: Control, use_name: String, pos: Vector2, scale: float) -> void:
+func _draw_building_use_icon(map: Control, use_name: String, pos: Vector2, icon_scale: float) -> void:
 	var icon_color := _use_icon_color(use_name)
-	map.draw_circle(pos, maxf(4.0, scale * 1.6), Color(0.0, 0.0, 0.0, 0.48))
+	map.draw_circle(pos, maxf(4.0, icon_scale * 1.6), Color(0.0, 0.0, 0.0, 0.48))
 	match use_name:
 		"Medical Bay":
-			map.draw_line(pos + Vector2(-scale, 0), pos + Vector2(scale, 0), icon_color, 2)
-			map.draw_line(pos + Vector2(0, -scale), pos + Vector2(0, scale), icon_color, 2)
+			map.draw_line(pos + Vector2(-icon_scale, 0), pos + Vector2(icon_scale, 0), icon_color, 2)
+			map.draw_line(pos + Vector2(0, -icon_scale), pos + Vector2(0, icon_scale), icon_color, 2)
 		"Watch Post":
-			map.draw_arc(pos, scale, PI, TAU, 8, icon_color, 2)
-			map.draw_line(pos, pos + Vector2(0, scale), icon_color, 2)
+			map.draw_arc(pos, icon_scale, PI, TAU, 8, icon_color, 2)
+			map.draw_line(pos, pos + Vector2(0, icon_scale), icon_color, 2)
 		"Workshop":
-			map.draw_line(pos + Vector2(-scale, scale), pos + Vector2(scale, -scale), icon_color, 2)
+			map.draw_line(pos + Vector2(-icon_scale, icon_scale), pos + Vector2(icon_scale, -icon_scale), icon_color, 2)
 		"Food Prep":
-			map.draw_circle(pos, maxf(2.0, scale * 0.55), icon_color)
-			map.draw_line(pos + Vector2(scale * 0.6, -scale * 0.7), pos + Vector2(scale * 1.2, -scale * 1.2), icon_color, 2)
+			map.draw_circle(pos, maxf(2.0, icon_scale * 0.55), icon_color)
+			map.draw_line(pos + Vector2(icon_scale * 0.6, -icon_scale * 0.7), pos + Vector2(icon_scale * 1.2, -icon_scale * 1.2), icon_color, 2)
 		"Sleeping Quarters":
-			map.draw_rect(Rect2(pos - Vector2(scale, scale * 0.35), Vector2(scale * 2.0, scale * 0.7)), icon_color, false, 2)
+			map.draw_rect(Rect2(pos - Vector2(icon_scale, icon_scale * 0.35), Vector2(icon_scale * 2.0, icon_scale * 0.7)), icon_color, false, 2)
 		"Vehicle Bay":
-			map.draw_rect(Rect2(pos - Vector2(scale, scale * 0.55), Vector2(scale * 2.0, scale * 1.1)), icon_color, false, 2)
+			map.draw_rect(Rect2(pos - Vector2(icon_scale, icon_scale * 0.55), Vector2(icon_scale * 2.0, icon_scale * 1.1)), icon_color, false, 2)
 		_:
-			map.draw_circle(pos, maxf(2.0, scale * 0.45), icon_color)
+			map.draw_circle(pos, maxf(2.0, icon_scale * 0.45), icon_color)
 
 func _use_icon_color(use_name: String) -> Color:
 	match use_name:
@@ -475,9 +459,9 @@ func _use_icon_color(use_name: String) -> Color:
 	return MUTED
 
 func _draw_estate_minimap(node: Control) -> void:
-	var size := node.size
-	node.draw_rect(Rect2(Vector2.ZERO, size), Color("#0a0f13"), true)
-	node.draw_rect(Rect2(Vector2.ZERO, size), Color("#34404a"), false, 1)
+	var map_size := node.size
+	node.draw_rect(Rect2(Vector2.ZERO, map_size), Color("#0a0f13"), true)
+	node.draw_rect(Rect2(Vector2.ZERO, map_size), Color("#34404a"), false, 1)
 	var points := [
 		Vector2(0.18, 0.45), Vector2(0.35, 0.3), Vector2(0.55, 0.36),
 		Vector2(0.74, 0.25), Vector2(0.25, 0.7), Vector2(0.48, 0.66),
@@ -485,13 +469,13 @@ func _draw_estate_minimap(node: Control) -> void:
 	]
 	for i in range(points.size()):
 		var building: Dictionary = BuildingManager.buildings[i]
-		var pos := Vector2(points[i].x * size.x, points[i].y * size.y)
+		var pos := Vector2(points[i].x * map_size.x, points[i].y * map_size.y)
 		var color := _building_color(building)
 		var radius := 5.0 if String(building.get("status", "")) == "Unknown" else 7.0
 		node.draw_circle(pos, radius + 4.0, Color(0, 0, 0, 0.45))
 		node.draw_circle(pos, radius, color)
 		if i > 0:
-			var prev := Vector2(points[i - 1].x * size.x, points[i - 1].y * size.y)
+			var prev := Vector2(points[i - 1].x * map_size.x, points[i - 1].y * map_size.y)
 			node.draw_line(prev, pos, Color("#3b454e"), 1)
 
 func _draw_map_bar(map: Control, pos: Vector2, width: float, value: float, color: Color) -> void:
@@ -535,7 +519,18 @@ func _is_expansion_marker(building: Dictionary) -> bool:
 		return false
 	if String(building.get("status", "")) in ["Claimed", "Operational", "Fortified"]:
 		return false
-	return String(building.get("status", "")) in ["Unknown", "Scouted", "Infested", "Cleared"]
+	if String(building.get("status", "")) != "Unknown":
+		return false
+	return int(building.get("id", 0)) > _revealed_building_limit()
+
+func _revealed_building_limit() -> int:
+	match GameManager.colony_tier_index:
+		0:
+			return 1
+		1:
+			return 6
+		_:
+			return 9
 
 func _connect_signals() -> void:
 	GameManager.state_changed.connect(_refresh)
@@ -1132,12 +1127,36 @@ func _show_scavenge_popup() -> void:
 	actions.add_child(close)
 
 func _show_game_menu() -> void:
-	var box := _show_modal("Game Menu", Vector2(420, 350))
+	var box := _show_modal("Game Menu", Vector2(430, 520))
 	var title := _label("Dead Shift", 18, ORANGE, HORIZONTAL_ALIGNMENT_CENTER)
 	box.add_child(title)
 
+	var build := _small_button("BUILD / MANAGE")
+	build.custom_minimum_size = Vector2(0, 48)
+	build.pressed.connect(func():
+		_dismiss_modal()
+		_show_build_popup()
+	)
+	box.add_child(build)
+
+	var scout := _small_button("SCOUT LOCATIONS")
+	scout.custom_minimum_size = Vector2(0, 48)
+	scout.pressed.connect(func():
+		_dismiss_modal()
+		_show_scavenge_popup()
+	)
+	box.add_child(scout)
+
+	var defend := _small_button("PREPARE DEFENCES")
+	defend.custom_minimum_size = Vector2(0, 48)
+	defend.pressed.connect(func():
+		_dismiss_modal()
+		_show_defence_popup()
+	)
+	box.add_child(defend)
+
 	var save := _small_button("MANUAL SAVE")
-	save.custom_minimum_size = Vector2(0, 50)
+	save.custom_minimum_size = Vector2(0, 48)
 	save.pressed.connect(func():
 		_dismiss_modal()
 		_show_result("Saved." if GameManager.manual_save() else "Save failed.")
@@ -1145,7 +1164,7 @@ func _show_game_menu() -> void:
 	box.add_child(save)
 
 	var settings := _small_button("SETTINGS")
-	settings.custom_minimum_size = Vector2(0, 50)
+	settings.custom_minimum_size = Vector2(0, 48)
 	settings.pressed.connect(func():
 		_dismiss_modal()
 		get_tree().change_scene_to_file("res://scenes/screens/SettingsScreen.tscn")
@@ -1153,7 +1172,7 @@ func _show_game_menu() -> void:
 	box.add_child(settings)
 
 	var main_menu := _small_button("SAVE AND MAIN MENU")
-	main_menu.custom_minimum_size = Vector2(0, 50)
+	main_menu.custom_minimum_size = Vector2(0, 48)
 	main_menu.pressed.connect(func():
 		GameManager.manual_save()
 		_dismiss_modal()
@@ -1162,7 +1181,7 @@ func _show_game_menu() -> void:
 	box.add_child(main_menu)
 
 	var reset := _small_button("RESET SAVE")
-	reset.custom_minimum_size = Vector2(0, 50)
+	reset.custom_minimum_size = Vector2(0, 48)
 	reset.add_theme_color_override("font_color", RED.lightened(0.2))
 	reset.pressed.connect(func():
 		_dismiss_modal()
@@ -1230,79 +1249,106 @@ func _is_selected_scavenger_crew() -> bool:
 	return false
 
 func _confirm_reset_save() -> void:
-	var dialog := ConfirmationDialog.new()
-	dialog.title = "Reset Save"
-	dialog.dialog_text = "Delete the local save and start again?"
-	add_child(dialog)
-	dialog.confirmed.connect(func():
+	var box := _show_modal("Reset Save", Vector2(430, 230))
+	var message := _label("Delete the local save and start again?", 16, TEXT, HORIZONTAL_ALIGNMENT_CENTER)
+	message.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	box.add_child(message)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 8)
+	box.add_child(row)
+	var reset := _small_button("RESET")
+	reset.custom_minimum_size = Vector2(0, 46)
+	reset.add_theme_color_override("font_color", RED.lightened(0.2))
+	reset.pressed.connect(func():
 		GameManager.reset_save_and_game()
-		dialog.queue_free()
+		_dismiss_modal()
 		_show_result("Save reset. New game started.")
 	)
-	dialog.canceled.connect(dialog.queue_free)
-	dialog.popup_centered(Vector2(420, 220))
+	row.add_child(reset)
+	var cancel := _small_button("CANCEL")
+	cancel.custom_minimum_size = Vector2(0, 46)
+	cancel.pressed.connect(_dismiss_modal)
+	row.add_child(cancel)
 
 func _show_task_popup(survivor_id: int) -> void:
-	var dialog := AcceptDialog.new()
 	var survivor_name := SurvivorManager.get_survivor_name(survivor_id)
 	var is_crew := SurvivorManager.is_crew(survivor_id)
-	dialog.title = "Manage Survivor"
-	dialog.dialog_text = "%s is %s.\nCrew are directly controlled. NPC residents choose useful colony jobs automatically." % [survivor_name, "in your crew" if is_crew else "an NPC resident"]
-	add_child(dialog)
+	var box := _show_modal("Manage Survivor", Vector2(500, 500 if is_crew else 280))
+	var intro := _label("%s is %s.\nCrew are directly controlled. NPC residents choose useful colony jobs automatically." % [survivor_name, "in your crew" if is_crew else "an NPC resident"], 15, TEXT)
+	intro.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	box.add_child(intro)
 	if is_crew:
 		for task in SurvivorManager.TASKS:
-			dialog.add_button(task, false, task)
-		dialog.add_button("Set As NPC", false, "__npc")
+			var task_button := _small_button(task.to_upper())
+			task_button.custom_minimum_size = Vector2(0, 40)
+			task_button.pressed.connect(func(task_name := task):
+				GameManager.assign_survivor_task(survivor_id, task_name)
+				_dismiss_modal()
+				_refresh()
+			)
+			box.add_child(task_button)
+		var npc := _small_button("SET AS NPC")
+		npc.custom_minimum_size = Vector2(0, 42)
+		npc.pressed.connect(func():
+			var result := GameManager.set_survivor_control_mode(survivor_id, "NPC")
+			_dismiss_modal()
+			_show_result(String(result["message"]))
+		)
+		box.add_child(npc)
 	else:
-		dialog.add_button("Add To Crew", false, "__crew")
-		dialog.add_button("Keep NPC", false, "__close")
-	dialog.custom_action.connect(func(action: StringName):
-		var action_text := String(action)
-		match action_text:
-			"__crew":
-				_show_result(String(GameManager.set_survivor_control_mode(survivor_id, "Crew")["message"]))
-			"__npc":
-				_show_result(String(GameManager.set_survivor_control_mode(survivor_id, "NPC")["message"]))
-			"__close":
-				pass
-			_:
-				GameManager.assign_survivor_task(survivor_id, action_text)
-		dialog.queue_free()
-	)
-	dialog.popup_centered(Vector2(460, 320))
+		var crew := _small_button("ADD TO CREW")
+		crew.custom_minimum_size = Vector2(0, 46)
+		crew.pressed.connect(func():
+			var result := GameManager.set_survivor_control_mode(survivor_id, "Crew")
+			_dismiss_modal()
+			_show_result(String(result["message"]))
+		)
+		box.add_child(crew)
+	var close := _small_button("CLOSE")
+	close.custom_minimum_size = Vector2(0, 42)
+	close.pressed.connect(_dismiss_modal)
+	box.add_child(close)
 
 func _show_recruit_popup(recruit: Dictionary) -> void:
-	var dialog := AcceptDialog.new()
-	dialog.title = "Survivor Found"
-	dialog.dialog_text = "%s, %s\nHealth %d  Infection %d%%\nInvited survivors join as NPC residents. Add them to Crew if you want direct control." % [recruit["name"], recruit["role"], recruit["health"], recruit["infection_risk"]]
-	add_child(dialog)
-	dialog.add_button("Invite", false, "Invite")
-	dialog.add_button("Quarantine", false, "Quarantine")
-	dialog.add_button("Reject", false, "Reject")
-	dialog.custom_action.connect(func(action: StringName):
-		GameManager.handle_recruit(String(action))
-		dialog.queue_free()
-	)
-	dialog.confirmed.connect(func(): GameManager.handle_recruit("Invite"))
-	dialog.popup_centered()
+	var box := _show_modal("Survivor Found", Vector2(500, 290))
+	var message := _label("%s, %s\nHealth %d  Infection %d%%\nInvited survivors join as NPC residents. Add them to Crew if you want direct control." % [recruit["name"], recruit["role"], recruit["health"], recruit["infection_risk"]], 15, TEXT)
+	message.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	box.add_child(message)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 8)
+	box.add_child(row)
+	for action in ["Invite", "Quarantine", "Reject"]:
+		var button := _small_button(action.to_upper())
+		button.custom_minimum_size = Vector2(0, 46)
+		button.pressed.connect(func(choice := action):
+			GameManager.handle_recruit(choice)
+			_dismiss_modal()
+			_refresh()
+		)
+		row.add_child(button)
 
 func _show_result(message: String) -> void:
-	var dialog := AcceptDialog.new()
-	dialog.title = "Dead Shift"
-	dialog.dialog_text = message
-	add_child(dialog)
-	dialog.confirmed.connect(dialog.queue_free)
 	var lines := message.count("\n") + 1
-	dialog.popup_centered(Vector2(520, 360) if lines > 3 else Vector2(420, 220))
+	var box := _show_modal("Dead Shift", Vector2(520, 360) if lines > 3 else Vector2(420, 220))
+	var text := _label(message, 16, TEXT, HORIZONTAL_ALIGNMENT_CENTER)
+	text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	text.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	box.add_child(text)
+	var ok := _small_button("OK")
+	ok.custom_minimum_size = Vector2(0, 46)
+	ok.pressed.connect(_dismiss_modal)
+	box.add_child(ok)
 	_refresh()
 
 func _show_game_over(message: String) -> void:
-	var dialog := AcceptDialog.new()
-	dialog.title = "Colony Lost"
-	dialog.dialog_text = message
-	add_child(dialog)
-	dialog.confirmed.connect(dialog.queue_free)
-	dialog.popup_centered(Vector2(460, 240))
+	var box := _show_modal("Colony Lost", Vector2(460, 240))
+	var text := _label(message, 16, TEXT, HORIZONTAL_ALIGNMENT_CENTER)
+	text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	box.add_child(text)
+	var ok := _small_button("OK")
+	ok.custom_minimum_size = Vector2(0, 46)
+	ok.pressed.connect(_dismiss_modal)
+	box.add_child(ok)
 	_refresh()
 
 func _selected_building() -> Dictionary:
@@ -1313,9 +1359,7 @@ func _selected_building() -> Dictionary:
 
 func _building_button_text(building: Dictionary) -> String:
 	if _is_expansion_marker(building):
-		if String(building.get("status", "")) == "Unknown":
-			return "?"
-		return "!\n%s" % String(building.get("status", ""))
+		return "?"
 	var assigned := Array(building.get("assigned_survivors", []))
 	return "%s\n%s  %d/%d" % [_building_display_name(building), building["status"], assigned.size(), int(building.get("capacity", 0))]
 
@@ -1427,7 +1471,7 @@ func _survivor_map_token(survivor: Dictionary) -> Button:
 	return token
 
 func _draw_survivor_icon(node: Control, survivor: Dictionary, compact: bool) -> void:
-	var size := node.size
+	var icon_size := node.size
 	var accent := _status_color(survivor)
 	var role_color := _role_color(String(survivor.get("role", "")))
 	var skin := _skin_color(int(survivor.get("id", 1)))
@@ -1436,12 +1480,12 @@ func _draw_survivor_icon(node: Control, survivor: Dictionary, compact: bool) -> 
 	var mode := String(survivor.get("control_mode", "NPC"))
 	var task := String(survivor.get("assigned_task", "Rest"))
 	var step := sin(ambient_time * (5.0 if task in ["Scavenge", "Scout"] else 2.8) + float(survivor.get("id", 1)))
-	node.draw_rect(Rect2(Vector2.ZERO, size), Color(0.02, 0.024, 0.027, 0.66), true)
-	node.draw_rect(Rect2(Vector2.ZERO, size), (BLUE if mode == "Crew" else MUTED).darkened(0.2), false, 2 if mode == "Crew" else 1)
-	var center := size * Vector2(0.5, 0.4 if compact else 0.34) + Vector2(0, step * (1.0 if compact else 1.5))
-	var head_radius := minf(size.x, size.y) * (0.18 if compact else 0.2)
+	node.draw_rect(Rect2(Vector2.ZERO, icon_size), Color(0.02, 0.024, 0.027, 0.66), true)
+	node.draw_rect(Rect2(Vector2.ZERO, icon_size), (BLUE if mode == "Crew" else MUTED).darkened(0.2), false, 2 if mode == "Crew" else 1)
+	var center := icon_size * Vector2(0.5, 0.4 if compact else 0.34) + Vector2(0, step * (1.0 if compact else 1.5))
+	var head_radius := minf(icon_size.x, icon_size.y) * (0.18 if compact else 0.2)
 	var torso_start := center + Vector2(0, head_radius * 1.1)
-	var leg_base := torso_start + Vector2(0, size.y * (0.24 if compact else 0.3))
+	var leg_base := torso_start + Vector2(0, icon_size.y * (0.24 if compact else 0.3))
 	var limb_width := maxf(1.2, head_radius * 0.35)
 	node.draw_line(torso_start + Vector2(-head_radius * 0.7, head_radius), leg_base + Vector2(-head_radius * 0.9, head_radius * (1.7 + step * 0.3)), coat, limb_width)
 	node.draw_line(torso_start + Vector2(head_radius * 0.7, head_radius), leg_base + Vector2(head_radius * 0.9, head_radius * (1.7 - step * 0.3)), coat, limb_width)
@@ -1453,7 +1497,7 @@ func _draw_survivor_icon(node: Control, survivor: Dictionary, compact: bool) -> 
 	if task == "Guard":
 		node.draw_rect(Rect2(center + Vector2(head_radius * 0.45, -head_radius * 0.2), Vector2(head_radius * 0.85, head_radius * 0.24)), RED, true)
 	var body_top := center + Vector2(-head_radius * 1.2, head_radius * 0.95)
-	var body_size := Vector2(head_radius * 2.4, size.y * (0.34 if compact else 0.42))
+	var body_size := Vector2(head_radius * 2.4, icon_size.y * (0.34 if compact else 0.42))
 	node.draw_rect(Rect2(body_top, body_size), coat, true)
 	node.draw_rect(Rect2(body_top, body_size), outline, false, 1)
 	_draw_role_mark(node, survivor, center + Vector2(0, body_size.y * 0.95), accent, compact)
@@ -1464,22 +1508,22 @@ func _skin_color(id: int) -> Color:
 
 func _draw_role_mark(node: Control, survivor: Dictionary, pos: Vector2, color: Color, compact: bool) -> void:
 	var role := String(survivor.get("role", ""))
-	var scale := 0.7 if compact else 1.0
+	var mark_scale := 0.7 if compact else 1.0
 	match role:
 		"Medic":
-			node.draw_line(pos + Vector2(-5, 0) * scale, pos + Vector2(5, 0) * scale, GREEN.lightened(0.2), 2)
-			node.draw_line(pos + Vector2(0, -5) * scale, pos + Vector2(0, 5) * scale, GREEN.lightened(0.2), 2)
+			node.draw_line(pos + Vector2(-5, 0) * mark_scale, pos + Vector2(5, 0) * mark_scale, GREEN.lightened(0.2), 2)
+			node.draw_line(pos + Vector2(0, -5) * mark_scale, pos + Vector2(0, 5) * mark_scale, GREEN.lightened(0.2), 2)
 		"Guard":
-			node.draw_arc(pos, 6.0 * scale, PI, TAU, 8, RED.lightened(0.15), 2)
-			node.draw_line(pos, pos + Vector2(0, 6) * scale, RED.lightened(0.15), 2)
+			node.draw_arc(pos, 6.0 * mark_scale, PI, TAU, 8, RED.lightened(0.15), 2)
+			node.draw_line(pos, pos + Vector2(0, 6) * mark_scale, RED.lightened(0.15), 2)
 		"Cook":
-			node.draw_circle(pos, 4.0 * scale, YELLOW)
-			node.draw_line(pos + Vector2(4, -4) * scale, pos + Vector2(7, -8) * scale, YELLOW, 2)
+			node.draw_circle(pos, 4.0 * mark_scale, YELLOW)
+			node.draw_line(pos + Vector2(4, -4) * mark_scale, pos + Vector2(7, -8) * mark_scale, YELLOW, 2)
 		"Builder", "Sign Fitter":
-			node.draw_line(pos + Vector2(-6, 5) * scale, pos + Vector2(5, -6) * scale, ORANGE.lightened(0.1), 3)
-			node.draw_circle(pos + Vector2(6, -7) * scale, 2.0 * scale, ORANGE.lightened(0.1))
+			node.draw_line(pos + Vector2(-6, 5) * mark_scale, pos + Vector2(5, -6) * mark_scale, ORANGE.lightened(0.1), 3)
+			node.draw_circle(pos + Vector2(6, -7) * mark_scale, 2.0 * mark_scale, ORANGE.lightened(0.1))
 		_:
-			node.draw_circle(pos, 4.0 * scale, color.lightened(0.15))
+			node.draw_circle(pos, 4.0 * mark_scale, color.lightened(0.15))
 
 func _threat_label() -> String:
 	var threat := ResourceManager.get_value("horde_threat")
