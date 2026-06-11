@@ -251,6 +251,13 @@ func count_by_status(status: String) -> int:
 			total += 1
 	return total
 
+func count_by_use(use_name: String) -> int:
+	var total := 0
+	for building in buildings:
+		if ["Claimed", "Operational", "Fortified"].has(String(building.get("status", ""))) and String(building.get("current_use", "")) == use_name:
+			total += 1
+	return total
+
 func count_survivable_buildings() -> int:
 	var total := 0
 	for building in buildings:

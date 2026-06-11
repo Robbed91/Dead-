@@ -29,6 +29,7 @@ func _run() -> void:
 
 	GameManager.assign_survivor_task(1, "Guard")
 	_assert_eq(ActivityManager.get_job(1).get("task", ""), "Guard", "survivor task starts tracked activity")
+	GameManager.assign_survivor_task(3, "Medical")
 
 	var scavenge_start := GameManager.scavenge("Tool Hire Depot", 2)
 	_assert_true(bool(scavenge_start.get("ok", false)), "can start timed scavenging")
@@ -39,6 +40,15 @@ func _run() -> void:
 	var preview := NightDefenseManager.get_preview()
 	_assert_true(int(preview.get("attack_strength", 0)) > 0, "night attack preview calculates attack")
 	_assert_true(int(preview.get("defence_strength", 0)) > 0, "night attack preview calculates defence")
+
+	var billy := SurvivorManager.survivors[0]
+	billy["health"] = 64
+	billy["infection_risk"] = 58
+	billy["status"] = "At Risk"
+	var condition_messages := SurvivorManager.apply_condition_progression()
+	_assert_true(not condition_messages.is_empty(), "condition progression creates medical/quarantine feedback")
+	_assert_true(int(billy["health"]) > 64 or int(billy["infection_risk"]) < 60, "medical progression changes survivor condition")
+	_assert_eq(ResourceManager.get_value("population"), SurvivorManager.get_population_count(), "population matches living survivors")
 
 	var food_before_save := ResourceManager.get_value("food")
 	_assert_true(SaveManager.save_game(GameManager.event_log), "save file can be written")

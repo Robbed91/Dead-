@@ -9,6 +9,7 @@ Dead Shift is a Godot 4 mobile Android prototype for a 2D zombie survival colony
 - Start a new game from `MainMenu.tscn`.
 - Review resources, colony status, night threat, buildings, survivors, objectives, alerts, and event log.
 - Assign survivor tasks and watch survivor tokens move around the estate while job progress fills.
+- Survivor health, infection risk, and status progress over time. Injured or infected survivors need rest, medicine, medical workers, or quarantine support.
 - Assign survivors to claimed buildings.
 - Assign building uses such as Workshop, Watch Post, Medical Bay, Storage, Sleeping Quarters, Quarantine, and Food Prep.
 - Scout, clear, claim, repair, or fortify buildings.
@@ -84,7 +85,7 @@ A headless smoke test checks the core loop managers without manual clicking:
 Godot_v4.6.3-stable_win64.exe --headless --path . -s tests/SmokeTest.gd
 ```
 
-It starts a new game, claims a building, installs an upgrade, starts and completes a scavenge job, previews night defence, saves, reloads, and ends the day. The test backs up and restores any existing `user://dead_shift_save.json`.
+It starts a new game, claims a building, installs an upgrade, starts and completes a scavenge job, checks survivor condition progression, previews night defence, saves, reloads, and ends the day. The test backs up and restores any existing `user://dead_shift_save.json`.
 
 ## Android Landscape Orientation
 

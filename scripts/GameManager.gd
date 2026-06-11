@@ -154,6 +154,8 @@ func end_day() -> Dictionary:
 		add_log(message)
 	for message in BuildingManager.apply_use_bonuses():
 		add_log(message)
+	for message in SurvivorManager.apply_condition_progression():
+		add_log(message)
 	var colony_event := _resolve_colony_event()
 	if colony_event != "":
 		add_log(colony_event)

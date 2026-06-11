@@ -76,6 +76,9 @@ func get_guard_count() -> int:
 func get_available_scavengers() -> Array:
 	return survivors.filter(func(s): return s.get("status", "Healthy") != "Dead")
 
+func get_population_count() -> int:
+	return get_available_scavengers().size()
+
 func apply_task_effects() -> Array:
 	var messages: Array = []
 	var cooks := 0
@@ -107,6 +110,65 @@ func apply_task_effects() -> Array:
 	if scouts > 0:
 		ResourceManager.add_resource("horde_threat", -scouts)
 		messages.append("Scouts tracked horde movement: threat -%d." % scouts)
+	survivors_changed.emit()
+	return messages
+
+func apply_condition_progression() -> Array:
+	var messages: Array = []
+	var medics := _task_count("Medical")
+	var quarantine_slots := BuildingManager.count_by_use("Quarantine")
+	var global_risk := ResourceManager.get_value("infection_risk")
+	var treated := 0
+	var quarantined := 0
+	for survivor in survivors:
+		if String(survivor.get("status", "Healthy")) == "Dead":
+			continue
+		var id := int(survivor["id"])
+		var status := String(survivor.get("status", "Healthy"))
+		var infection := int(survivor.get("infection_risk", 0))
+		var health := int(survivor.get("health", 100))
+		if global_risk >= 20 and status != "Healthy":
+			infection += 1
+		if status == "Injured" and survivor.get("assigned_task", "") != "Rest":
+			health -= 2
+		if status == "At Risk":
+			infection += 2
+		if status == "Infected":
+			infection += 3
+			health -= 5
+		if medics > treated and (health < 80 or infection >= 35):
+			treated += 1
+			health += 8
+			infection -= 5
+			if ResourceManager.get_value("medicine") > 0:
+				ResourceManager.add_resource("medicine", -1)
+				infection -= 4
+			messages.append("%s received medical treatment." % survivor["name"])
+		elif quarantine_slots > quarantined and infection >= 45:
+			quarantined += 1
+			infection -= 3
+			ResourceManager.add_resource("morale", -1)
+			messages.append("%s was kept isolated overnight." % survivor["name"])
+		if infection >= 85 or health <= 0:
+			survivor["health"] = 0
+			survivor["status"] = "Dead"
+			survivor["assigned_task"] = "Rest"
+			ActivityManager.active_jobs.erase(id)
+			ResourceManager.add_resource("morale", -8)
+			ResourceManager.add_resource("infection_risk", 3)
+			messages.append("%s did not survive the night." % survivor["name"])
+			continue
+		survivor["health"] = clamp(health, 0, 100)
+		survivor["infection_risk"] = clamp(infection, 0, 100)
+		if int(survivor["infection_risk"]) >= 70:
+			survivor["status"] = "Infected"
+		elif int(survivor["infection_risk"]) >= 50:
+			survivor["status"] = "At Risk"
+		elif int(survivor["health"]) < 70:
+			survivor["status"] = "Injured"
+		elif int(survivor["health"]) >= 85 and int(survivor["infection_risk"]) < 35:
+			survivor["status"] = "Healthy"
+	ResourceManager.set_value("population", get_population_count())
 	survivors_changed.emit()
 	return messages
 
@@ -180,6 +242,13 @@ func from_dict(data: Dictionary) -> void:
 	next_id = int(data.get("next_id", survivors.size() + 1))
 	ResourceManager.set_value("population", survivors.filter(func(s): return s.get("status", "Healthy") != "Dead").size())
 	survivors_changed.emit()
+
+func _task_count(task: String) -> int:
+	var total := 0
+	for survivor in get_available_scavengers():
+		if String(survivor.get("assigned_task", "")) == task:
+			total += 1
+	return total
 
 func _find_survivor(id: int) -> Dictionary:
 	for survivor in survivors:

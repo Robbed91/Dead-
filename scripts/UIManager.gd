@@ -468,7 +468,7 @@ func _refresh_survivors() -> void:
 		survivors_box.add_child(row)
 		var portrait := ColorRect.new()
 		portrait.custom_minimum_size = Vector2(34, 34)
-		portrait.color = _role_color(String(survivor["role"]))
+		portrait.color = _status_color(survivor)
 		row.add_child(portrait)
 		var details := VBoxContainer.new()
 		details.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -477,8 +477,8 @@ func _refresh_survivors() -> void:
 		var job_suffix := ""
 		if String(job.get("location", "")) != "":
 			job_suffix = " @ %s" % String(job["location"])
-		details.add_child(_label("%s  HP %s%%" % [survivor["name"], survivor["health"]], 12, TEXT))
-		details.add_child(_label("%s - %s%s" % [survivor["role"], survivor["assigned_task"], job_suffix], 9, MUTED))
+		details.add_child(_label("%s  HP %s%%  INF %s%%" % [survivor["name"], survivor["health"], survivor["infection_risk"]], 12, TEXT))
+		details.add_child(_label("%s - %s - %s%s" % [survivor["role"], survivor["status"], survivor["assigned_task"], job_suffix], 9, MUTED))
 		var progress := ProgressBar.new()
 		progress.custom_minimum_size = Vector2(0, 8)
 		progress.max_value = 1.0
@@ -560,7 +560,7 @@ func _position_survivor_tokens(map: Control) -> void:
 			survivor_tokens[id] = token
 		var token: Button = survivor_tokens[id]
 		token.tooltip_text = "%s - %s" % [survivor["name"], survivor["assigned_task"]]
-		token.modulate = _role_color(String(survivor["role"]))
+		token.modulate = _status_color(survivor)
 		var destination := _survivor_destination(map, survivor, id)
 		var progress := int(ActivityManager.get_progress(id) * 100.0)
 		token.text = "%s\n%d" % [String(survivor["name"]).substr(0, 1), progress]
@@ -928,6 +928,18 @@ func _role_color(role: String) -> Color:
 		"Builder", "Sign Fitter":
 			return ORANGE
 	return BLUE
+
+func _status_color(survivor: Dictionary) -> Color:
+	match String(survivor.get("status", "Healthy")):
+		"Dead":
+			return Color("#252525")
+		"Infected":
+			return RED
+		"At Risk":
+			return YELLOW
+		"Injured":
+			return ORANGE
+	return _role_color(String(survivor.get("role", "")))
 
 func _threat_label() -> String:
 	var threat := ResourceManager.get_value("horde_threat")
