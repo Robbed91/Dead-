@@ -122,6 +122,10 @@ func _update_location_after_scavenge(location: Dictionary, danger: int, alarm: i
 
 func _normalize_locations() -> void:
 	for location in locations:
+		if not location.has("min_population"):
+			location["min_population"] = 1
+		if not location.has("required_use"):
+			location["required_use"] = ""
 		if not location.has("remaining"):
 			location["remaining"] = 100
 		if not location.has("cooldown"):
@@ -132,6 +136,12 @@ func _normalize_locations() -> void:
 func _availability_for_location(location: Dictionary, location_name: String) -> Dictionary:
 	if location.is_empty():
 		return {"ok": false, "message": "Location not found."}
+	var min_population := int(location.get("min_population", 1))
+	if SurvivorManager.get_population_count() < min_population:
+		return {"ok": false, "message": "%s needs a larger colony: %d survivors." % [location_name, min_population]}
+	var required_use := String(location.get("required_use", ""))
+	if required_use != "" and BuildingManager.count_by_use(required_use) <= 0:
+		return {"ok": false, "message": "%s needs an operational %s." % [location_name, required_use]}
 	if int(location.get("cooldown", 0)) > 0:
 		return {"ok": false, "message": "%s is too hot to enter for %d more day(s)." % [location_name, int(location["cooldown"])]}
 	if int(location.get("remaining", 100)) <= 0:

@@ -22,6 +22,8 @@ func _run() -> void:
 	_assert_eq(SurvivorManager.get_crew_count(), 1, "Billy starts as direct crew")
 	_assert_eq(String(GameManager.get_colony_tier().get("name", "")), "Hideout", "starting tier is hideout")
 	_assert_true(BuildingManager.buildings.size() >= 9, "starting buildings loaded")
+	var locked_garage := GameManager.building_action(5, "Scout")
+	_assert_true(not bool(locked_garage.get("ok", false)), "garage starts locked until the colony has suitable people")
 
 	var scout_result := GameManager.building_action(2, "Scout")
 	_assert_true(bool(scout_result.get("ok", false)), "can scout unknown Signage Workshop")

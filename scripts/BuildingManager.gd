@@ -4,6 +4,17 @@ signal buildings_changed
 
 const StartingBuildings = preload("res://data/starting_buildings.gd")
 const USES := ["Storage", "Sleeping Quarters", "Workshop", "Medical Bay", "Radio Room", "Quarantine", "Watch Post", "Food Prep", "Vehicle Bay", "Training Room"]
+const CONTROLLED_STATUSES := ["Claimed", "Operational", "Fortified"]
+const BUILDING_REQUIREMENTS := {
+	2: {"population": 1, "roles": [], "hint": "Scout the nearby workshop from the hideout."},
+	3: {"population": 2, "roles": ["Builder", "Sign Fitter", "Engineer", "Fabricator"], "hint": "Needs 2 survivors and a builder-type survivor."},
+	4: {"population": 2, "roles": ["Medic"], "hint": "Needs 2 survivors and a medic."},
+	5: {"population": 3, "roles": ["Mechanic", "Driver", "Engineer"], "hint": "Needs 3 survivors and a mechanic, driver, or engineer."},
+	6: {"population": 2, "roles": ["Guard", "Scout"], "hint": "Needs 2 survivors and a guard or scout."},
+	7: {"population": 3, "roles": ["Cook", "Farmer", "Quartermaster"], "hint": "Needs 3 survivors and a food specialist."},
+	8: {"population": 4, "roles": ["Scout", "Driver", "Negotiator"], "hint": "Needs 4 survivors and someone good outside the walls."},
+	9: {"population": 5, "roles": ["Teacher", "Quartermaster", "Builder", "Sign Fitter"], "hint": "Needs 5 survivors and someone who can organise living space."}
+}
 const UPGRADES := {
 	"barricade_kit": {
 		"name": "Barricade Kit",
@@ -68,7 +79,7 @@ func get_fortified_bonus() -> int:
 func get_upgrade_defence_bonus() -> int:
 	var bonus := 0
 	for building in buildings:
-		if not ["Claimed", "Operational", "Fortified"].has(String(building.get("status", ""))):
+		if not is_controlled(building):
 			continue
 		for upgrade_id in Array(building.get("upgrades", [])):
 			bonus += int(UPGRADES.get(String(upgrade_id), {}).get("defence_bonus", 0))
@@ -77,7 +88,7 @@ func get_upgrade_defence_bonus() -> int:
 func apply_use_bonuses() -> Array:
 	var messages: Array = []
 	for building in buildings:
-		if not ["Claimed", "Operational", "Fortified"].has(building.get("status", "")):
+		if not is_controlled(building):
 			continue
 		match building.get("current_use", "None"):
 			"Sleeping Quarters":
@@ -120,7 +131,7 @@ func assign_use(id: int, use_name: String) -> Dictionary:
 		return {"ok": false, "message": "Building not found."}
 	if not USES.has(use_name):
 		return {"ok": false, "message": "Unknown building use."}
-	if not ["Claimed", "Operational", "Fortified"].has(building.get("status", "")):
+	if not is_controlled(building):
 		return {"ok": false, "message": "%s must be claimed before assigning a use." % building["name"]}
 	building["current_use"] = use_name
 	if building["status"] == "Claimed":
@@ -132,7 +143,7 @@ func assign_survivor(id: int, survivor_id: int) -> Dictionary:
 	var building := _find_building(id)
 	if building.is_empty():
 		return {"ok": false, "message": "Building not found."}
-	if not ["Claimed", "Operational", "Fortified"].has(building.get("status", "")):
+	if not is_controlled(building):
 		return {"ok": false, "message": "%s must be claimed before assigning survivors." % building["name"]}
 	var assigned := Array(building.get("assigned_survivors", []))
 	if assigned.size() >= int(building.get("capacity", 0)):
@@ -150,6 +161,8 @@ func perform_action(id: int, action: String) -> Dictionary:
 		return {"ok": false, "message": "Building not found."}
 	match action:
 		"Scout":
+			if not is_building_unlocked(building):
+				return {"ok": false, "message": "%s is locked. %s" % [building["name"], get_unlock_hint(building)]}
 			if building["status"] == "Unknown":
 				building["status"] = "Scouted"
 				ResourceManager.add_resource("noise", 2)
@@ -175,7 +188,7 @@ func perform_action(id: int, action: String) -> Dictionary:
 				_emit()
 				return {"ok": true, "message": "%s is now claimed." % building["name"]}
 		"Repair":
-			if ["Claimed", "Operational", "Fortified"].has(building["status"]) and ResourceManager.spend_resource("materials", 10):
+			if is_controlled(building) and ResourceManager.spend_resource("materials", 10):
 				building["condition"] = min(100, int(building["condition"]) + 15)
 				building["status"] = "Operational"
 				_emit()
@@ -195,7 +208,7 @@ func install_upgrade(id: int, upgrade_id: String) -> Dictionary:
 		return {"ok": false, "message": "Building not found."}
 	if not UPGRADES.has(upgrade_id):
 		return {"ok": false, "message": "Unknown upgrade."}
-	if not ["Claimed", "Operational", "Fortified"].has(String(building.get("status", ""))):
+	if not is_controlled(building):
 		return {"ok": false, "message": "%s must be claimed before installing upgrades." % building["name"]}
 	var upgrades := Array(building.get("upgrades", []))
 	if upgrades.has(upgrade_id):
@@ -219,7 +232,7 @@ func get_upgrade_name(upgrade_id: String) -> String:
 	return String(UPGRADES.get(upgrade_id, {}).get("name", upgrade_id))
 
 func damage_random(amount: int) -> Dictionary:
-	var targets := buildings.filter(func(b): return ["Operational", "Fortified", "Claimed"].has(b.get("status", "")))
+	var targets := buildings.filter(func(b): return is_controlled(b))
 	if targets.is_empty():
 		return {}
 	var building: Dictionary = targets.pick_random()
@@ -254,19 +267,48 @@ func count_by_status(status: String) -> int:
 func count_by_use(use_name: String) -> int:
 	var total := 0
 	for building in buildings:
-		if ["Claimed", "Operational", "Fortified"].has(String(building.get("status", ""))) and String(building.get("current_use", "")) == use_name:
+		if is_controlled(building) and String(building.get("current_use", "")) == use_name:
 			total += 1
 	return total
 
 func count_survivable_buildings() -> int:
 	var total := 0
 	for building in buildings:
-		if ["Claimed", "Operational", "Fortified"].has(String(building.get("status", ""))):
+		if is_controlled(building):
 			total += 1
 	return total
 
 func count_controlled_buildings() -> int:
 	return count_survivable_buildings()
+
+func is_controlled(building: Dictionary) -> bool:
+	return CONTROLLED_STATUSES.has(String(building.get("status", "")))
+
+func is_building_unlocked(building: Dictionary) -> bool:
+	if building.is_empty():
+		return false
+	if is_controlled(building) or String(building.get("status", "")) != "Unknown":
+		return true
+	var id := int(building.get("id", 0))
+	if id <= 1:
+		return true
+	var requirement: Dictionary = BUILDING_REQUIREMENTS.get(id, {})
+	var needed_population := int(requirement.get("population", 1))
+	if SurvivorManager.get_population_count() < needed_population:
+		return false
+	var roles: Array = Array(requirement.get("roles", []))
+	if roles.is_empty():
+		return true
+	for survivor in SurvivorManager.get_available_scavengers():
+		if roles.has(String(survivor.get("role", ""))):
+			return true
+	return false
+
+func get_unlock_hint(building: Dictionary) -> String:
+	var requirement: Dictionary = BUILDING_REQUIREMENTS.get(int(building.get("id", 0)), {})
+	if requirement.is_empty():
+		return "Scout nearby areas to reveal it."
+	return String(requirement.get("hint", "Grow the colony to unlock this building."))
 
 func _find_building(id: int) -> Dictionary:
 	for building in buildings:

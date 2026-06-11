@@ -794,7 +794,10 @@ func _refresh_selected_building() -> void:
 	for upgrade_id in upgrades:
 		upgrade_names.append(BuildingManager.get_upgrade_name(String(upgrade_id)))
 	var upgrade_text := "None" if upgrade_names.is_empty() else ", ".join(upgrade_names)
-	selected_building_label.text = "%s\n%s | %s\nCond %d  Sec %d  Inf %d\nUpgrades: %s" % [_building_display_name(building), building["status"], building["current_use"], building["condition"], building["security"], building["infestation"], upgrade_text]
+	var lock_text := ""
+	if not BuildingManager.is_building_unlocked(building):
+		lock_text = "\nLOCKED: %s" % BuildingManager.get_unlock_hint(building)
+	selected_building_label.text = "%s\n%s | %s\nCond %d  Sec %d  Inf %d\nUpgrades: %s%s" % [_building_display_name(building), building["status"], building["current_use"], building["condition"], building["security"], building["infestation"], upgrade_text, lock_text]
 
 func _refresh_night_preview() -> void:
 	if night_preview_label == null:
@@ -840,6 +843,12 @@ func _build_building_commands() -> void:
 		button.disabled = not _can_building_action(building, action)
 		button.pressed.connect(_on_building_action.bind(int(building["id"]), action))
 		command_body.add_child(button)
+	if not BuildingManager.is_building_unlocked(building):
+		var unlock := _label(BuildingManager.get_unlock_hint(building), 13, MUTED)
+		unlock.custom_minimum_size = Vector2(230, 54)
+		unlock.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		command_body.add_child(unlock)
+		return
 	var can_manage := _can_manage_building(building)
 	if not can_manage:
 		var locked := _label("Claim this building before assigning use or survivors.", 13, MUTED)
@@ -945,10 +954,9 @@ func _build_radio_commands() -> void:
 	var radio := _small_button("CALL RADIO\n-2 power")
 	radio.custom_minimum_size = Vector2(130, 54)
 	radio.pressed.connect(func():
-		ResourceManager.add_resource("power", -2)
-		ResourceManager.add_resource("horde_threat", -2)
-		GameManager.add_log("Radio scan reduced horde uncertainty.")
-		_show_result("Radio scan complete. Horde threat reduced.")
+		var result := GameManager.call_radio_contact()
+		if not bool(result.get("recruit_found", false)):
+			_show_result(String(result["message"]))
 	)
 	command_body.add_child(radio)
 	var save := _small_button("SAVE")
@@ -1356,7 +1364,8 @@ func _show_result(message: String) -> void:
 	_refresh()
 
 func _show_game_over(message: String) -> void:
-	var box := _show_modal("Colony Lost", Vector2(460, 240))
+	var title := "City Secured" if message.begins_with("Victory:") else "Colony Lost"
+	var box := _show_modal(title, Vector2(460, 240))
 	var text := _label(message, 16, TEXT, HORIZONTAL_ALIGNMENT_CENTER)
 	text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	box.add_child(text)
@@ -1386,7 +1395,7 @@ func _building_display_name(building: Dictionary) -> String:
 func _can_building_action(building: Dictionary, action: String) -> bool:
 	match action:
 		"Scout":
-			return String(building.get("status", "")) == "Unknown"
+			return String(building.get("status", "")) == "Unknown" and BuildingManager.is_building_unlocked(building)
 		"Clear":
 			return ["Scouted", "Infested"].has(String(building.get("status", ""))) and ResourceManager.get_value("ammo") >= 2
 		"Claim":
@@ -1398,7 +1407,7 @@ func _can_building_action(building: Dictionary, action: String) -> bool:
 	return false
 
 func _can_manage_building(building: Dictionary) -> bool:
-	return ["Claimed", "Operational", "Fortified"].has(String(building.get("status", "")))
+	return BuildingManager.is_controlled(building)
 
 func _can_install_upgrade(building: Dictionary, upgrade_id: String) -> bool:
 	if not BuildingManager.UPGRADES.has(upgrade_id):
@@ -1423,6 +1432,12 @@ func _cost_text(cost: Dictionary) -> String:
 	return "-%s" % ", ".join(parts)
 
 func _location_state_text(location: Dictionary) -> String:
+	var min_population := int(location.get("min_population", 1))
+	if SurvivorManager.get_population_count() < min_population:
+		return "LOCK %d POP" % min_population
+	var required_use := String(location.get("required_use", ""))
+	if required_use != "" and BuildingManager.count_by_use(required_use) <= 0:
+		return "NEEDS %s" % required_use.to_upper()
 	var remaining := int(location.get("remaining", 100))
 	var cooldown := int(location.get("cooldown", 0))
 	if cooldown > 0:

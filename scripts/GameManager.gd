@@ -169,6 +169,31 @@ func prepare_defences(tactic_id := "patch_barricades") -> Dictionary:
 	state_changed.emit()
 	return result
 
+func call_radio_contact() -> Dictionary:
+	if is_game_over():
+		return {"ok": false, "message": game_over_message}
+	if ResourceManager.get_value("power") < 2:
+		return {"ok": false, "message": "Not enough power to run the radio."}
+	ResourceManager.add_resource("power", -2)
+	ResourceManager.add_resource("horde_threat", -2)
+	ResourceManager.add_resource("noise", 1)
+	phase = "Radio"
+	var message := "Radio scan complete. Horde threat reduced."
+	var recruit_chance := 55 if SurvivorManager.get_population_count() < 5 else 30
+	if pending_recruit.is_empty() and randi_range(1, 100) <= recruit_chance:
+		pending_recruit = SurvivorManager.generate_recruit()
+		message += " A survivor answered the call: %s the %s." % [pending_recruit["name"], pending_recruit["role"]]
+		add_log(message)
+		recruit_found.emit(pending_recruit)
+		_update_objective()
+		state_changed.emit()
+		return {"ok": true, "message": message, "recruit_found": true}
+	else:
+		add_log(message)
+	_update_objective()
+	state_changed.emit()
+	return {"ok": true, "message": message, "recruit_found": false}
+
 func end_day() -> Dictionary:
 	if is_game_over():
 		return {"ok": false, "message": game_over_message}
@@ -205,8 +230,8 @@ func end_day() -> Dictionary:
 		report.append("Rations issued: %d food, %d water." % [consumption["food_needed"], consumption["water_needed"]])
 	ResourceManager.advance_day()
 	phase = "Morning"
-	_check_failure_state()
 	_update_colony_tier(true)
+	_check_failure_state()
 	_update_objective()
 	add_log("Auto-save complete. Morning begins.")
 	SaveManager.save_game(event_log)
@@ -311,7 +336,9 @@ func _update_colony_tier(announce: bool) -> void:
 		colony_tier_changed.emit(tier)
 
 func _check_failure_state() -> void:
-	if SurvivorManager.get_available_scavengers().is_empty():
+	if colony_tier_index >= COLONY_TIERS.size() - 1 and BuildingManager.count_controlled_buildings() >= 9 and ResourceManager.get_value("day_number") >= 30:
+		game_over_message = "Victory: Dead Shift has become a survivor city. The estate is secured for now."
+	elif SurvivorManager.get_available_scavengers().is_empty():
 		game_over_message = "Colony lost: no living survivors remain."
 	elif ResourceManager.get_value("morale") <= 0:
 		game_over_message = "Colony broken: morale has collapsed."
