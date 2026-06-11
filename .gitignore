@@ -4,6 +4,7 @@ export/*.apk
 export/*.aab
 export/*.pck
 export/*.keystore
+export/*.idsig
+.codex-remote-attachments/
 *.tmp
 *.translation
-

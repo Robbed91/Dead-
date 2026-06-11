@@ -1,146 +1,321 @@
 extends Control
 
-@export var initial_tab := "Colony"
+@export var initial_tab := "Buildings"
 
-const TAB_NAMES := ["Colony", "Buildings", "Survivors", "Scavenge", "Crafting", "Defence"]
-const THEME_BG := Color("#111317")
-const PANEL := Color("#20252b")
-const PANEL_LIGHT := Color("#2d343b")
+const TABS := ["Buildings", "Survivors", "Scavenge", "Crafting", "Map", "Radio"]
+const BG := Color("#080b0d")
+const PANEL := Color("#13181d")
+const PANEL_DARK := Color("#0d1115")
+const PANEL_LIGHT := Color("#242c33")
 const ORANGE := Color("#f28c28")
 const RED := Color("#c23b33")
 const GREEN := Color("#70b86b")
+const BLUE := Color("#4aa3df")
+const YELLOW := Color("#d9aa38")
 const TEXT := Color("#e8e0d2")
+const MUTED := Color("#91a0a6")
 
-var ui_scale := 1.0
-var resource_bar: Label
-var status_bar: Label
-var objective_label: Label
-var log_box: VBoxContainer
-var content: VBoxContainer
-var tab_buttons: Dictionary = {}
-var active_tab := "Colony"
+const BUILDING_LAYOUT := {
+	"Main Warehouse": Rect2(0.36, 0.34, 0.25, 0.24),
+	"Signage Workshop": Rect2(0.18, 0.23, 0.18, 0.18),
+	"Builder's Merchant": Rect2(0.08, 0.48, 0.18, 0.19),
+	"Pharmacy": Rect2(0.64, 0.27, 0.15, 0.17),
+	"Garage": Rect2(0.08, 0.18, 0.15, 0.16),
+	"Security Office": Rect2(0.51, 0.12, 0.16, 0.16),
+	"Food Distribution Unit": Rect2(0.69, 0.52, 0.19, 0.19),
+	"Self-Storage Units": Rect2(0.29, 0.62, 0.21, 0.18),
+	"Office Block": Rect2(0.55, 0.63, 0.17, 0.2),
+}
+
+var active_tab := "Buildings"
+var selected_building_id := 1
 var selected_scavenger_id := 1
 var selected_building_use: Dictionary = {}
 var selected_building_survivor: Dictionary = {}
+var tab_buttons: Dictionary = {}
+var building_buttons: Dictionary = {}
+var survivor_tokens: Dictionary = {}
+
+var resource_row: HBoxContainer
+var colony_strip: HBoxContainer
+var objective_body: Label
+var alerts_box: VBoxContainer
+var event_log_box: VBoxContainer
+var estate_board: Control
+var survivors_box: VBoxContainer
+var command_title: Label
+var command_body: VBoxContainer
+var selected_building_label: Label
+var end_day_button: Button
 
 func _ready() -> void:
-	active_tab = initial_tab if TAB_NAMES.has(initial_tab) else "Colony"
-	_calculate_mobile_scale()
+	active_tab = initial_tab if TABS.has(initial_tab) else "Buildings"
 	_build_theme()
 	_build_layout()
 	_connect_signals()
 	_refresh()
 
-func _calculate_mobile_scale() -> void:
-	var width := get_viewport_rect().size.x
-	if width <= 0:
-		width = 390
-	ui_scale = clamp(width / 430.0, 0.78, 1.0)
-
-func _scaled(value: float) -> int:
-	return int(round(value * ui_scale))
-
 func _build_theme() -> void:
 	var theme := Theme.new()
-	theme.default_font_size = _scaled(14)
+	theme.default_font_size = 13
 	var button_style := StyleBoxFlat.new()
 	button_style.bg_color = PANEL_LIGHT
-	button_style.corner_radius_top_left = 6
-	button_style.corner_radius_top_right = 6
-	button_style.corner_radius_bottom_left = 6
-	button_style.corner_radius_bottom_right = 6
+	button_style.border_color = Color("#46515c")
 	button_style.border_width_left = 1
 	button_style.border_width_top = 1
 	button_style.border_width_right = 1
 	button_style.border_width_bottom = 1
-	button_style.border_color = Color("#4d5863")
+	button_style.corner_radius_top_left = 4
+	button_style.corner_radius_top_right = 4
+	button_style.corner_radius_bottom_left = 4
+	button_style.corner_radius_bottom_right = 4
+	var pressed_style := button_style.duplicate()
+	pressed_style.bg_color = Color("#3a2410")
+	pressed_style.border_color = ORANGE
 	theme.set_stylebox("normal", "Button", button_style)
 	theme.set_stylebox("hover", "Button", button_style)
-	theme.set_stylebox("pressed", "Button", button_style)
+	theme.set_stylebox("pressed", "Button", pressed_style)
 	theme.set_color("font_color", "Button", TEXT)
 	theme.set_color("font_color", "Label", TEXT)
 	set_theme(theme)
 
 func _build_layout() -> void:
 	set_anchors_preset(Control.PRESET_FULL_RECT)
+
 	var bg := ColorRect.new()
-	bg.color = THEME_BG
+	bg.color = BG
 	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
 	add_child(bg)
 
 	var root := VBoxContainer.new()
 	root.set_anchors_preset(Control.PRESET_FULL_RECT)
-	root.add_theme_constant_override("separation", _scaled(4))
-	root.offset_left = _scaled(6)
-	root.offset_top = _scaled(4)
-	root.offset_right = -_scaled(6)
-	root.offset_bottom = -_scaled(4)
+	root.offset_left = 6
+	root.offset_top = 5
+	root.offset_right = -6
+	root.offset_bottom = -5
+	root.add_theme_constant_override("separation", 5)
 	add_child(root)
 
-	var title := Label.new()
-	title.text = "DEAD SHIFT"
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.add_theme_font_size_override("font_size", _scaled(18))
-	title.add_theme_color_override("font_color", ORANGE)
-	root.add_child(title)
+	_build_top_bar(root)
+	_build_middle(root)
+	_build_command_bar(root)
 
-	resource_bar = Label.new()
-	resource_bar.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	resource_bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	resource_bar.add_theme_font_size_override("font_size", _scaled(12))
-	root.add_child(resource_bar)
+func _build_top_bar(root: VBoxContainer) -> void:
+	var top := HBoxContainer.new()
+	top.custom_minimum_size = Vector2(0, 70)
+	top.add_theme_constant_override("separation", 6)
+	root.add_child(top)
 
-	status_bar = Label.new()
-	status_bar.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	status_bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	status_bar.add_theme_font_size_override("font_size", _scaled(12))
-	root.add_child(status_bar)
+	var logo := _add_panel(top, Vector2(200, 0))
+	logo.add_child(_label("DEAD SHIFT", 32, ORANGE, HORIZONTAL_ALIGNMENT_CENTER))
+	logo.add_child(_label("COLONY SURVIVAL", 12, RED, HORIZONTAL_ALIGNMENT_CENTER))
 
-	objective_label = Label.new()
-	objective_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	objective_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	objective_label.add_theme_font_size_override("font_size", _scaled(12))
-	root.add_child(objective_label)
+	var day_panel := _add_panel(top, Vector2(90, 0))
+	day_panel.add_child(_label("DAY", 12, MUTED, HORIZONTAL_ALIGNMENT_CENTER))
+	day_panel.add_child(_label("1", 28, TEXT, HORIZONTAL_ALIGNMENT_CENTER, "day_value"))
 
-	var scroll := ScrollContainer.new()
-	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	root.add_child(scroll)
+	resource_row = HBoxContainer.new()
+	resource_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	resource_row.add_theme_constant_override("separation", 4)
+	top.add_child(resource_row)
 
-	content = VBoxContainer.new()
-	content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	content.add_theme_constant_override("separation", _scaled(6))
-	scroll.add_child(content)
+	colony_strip = HBoxContainer.new()
+	colony_strip.custom_minimum_size = Vector2(320, 0)
+	colony_strip.add_theme_constant_override("separation", 4)
+	top.add_child(colony_strip)
 
-	var log_title := Label.new()
-	log_title.text = "Event Log"
-	log_title.add_theme_font_size_override("font_size", _scaled(12))
-	log_title.add_theme_color_override("font_color", ORANGE)
-	root.add_child(log_title)
+func _build_middle(root: VBoxContainer) -> void:
+	var middle := HBoxContainer.new()
+	middle.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	middle.add_theme_constant_override("separation", 5)
+	root.add_child(middle)
 
-	var log_scroll := ScrollContainer.new()
-	log_scroll.custom_minimum_size = Vector2(0, _scaled(62))
-	log_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	root.add_child(log_scroll)
+	var left := VBoxContainer.new()
+	left.custom_minimum_size = Vector2(230, 0)
+	left.add_theme_constant_override("separation", 5)
+	middle.add_child(left)
+	_build_left_panel(left)
 
-	log_box = VBoxContainer.new()
-	log_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	log_scroll.add_child(log_box)
+	estate_board = _estate_board()
+	estate_board.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	estate_board.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	middle.add_child(estate_board)
 
-	var nav := GridContainer.new()
-	nav.columns = 3
-	nav.add_theme_constant_override("h_separation", _scaled(4))
-	nav.add_theme_constant_override("v_separation", _scaled(4))
-	root.add_child(nav)
-	for tab in TAB_NAMES:
-		var button := Button.new()
-		button.text = "Scav" if tab == "Scavenge" else tab
-		button.custom_minimum_size = Vector2(0, _scaled(36))
-		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		button.add_theme_font_size_override("font_size", _scaled(12))
+	var right := VBoxContainer.new()
+	right.custom_minimum_size = Vector2(250, 0)
+	right.add_theme_constant_override("separation", 5)
+	middle.add_child(right)
+	_build_right_panel(right)
+
+func _build_left_panel(left: VBoxContainer) -> void:
+	var objective := _add_panel(left, Vector2(0, 118))
+	objective.add_child(_label("CURRENT OBJECTIVE", 13, GREEN))
+	objective_body = _label("", 13, TEXT)
+	objective_body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	objective.add_child(objective_body)
+
+	var alerts := _add_panel(left, Vector2(0, 126))
+	alerts.add_child(_label("ALERTS", 13, RED))
+	alerts_box = VBoxContainer.new()
+	alerts_box.add_theme_constant_override("separation", 3)
+	alerts.add_child(alerts_box)
+
+	var map := _add_panel(left, Vector2(0, 140))
+	map.add_child(_label("ESTATE MAP", 13, TEXT))
+	var grid := GridContainer.new()
+	grid.columns = 4
+	grid.add_theme_constant_override("h_separation", 5)
+	grid.add_theme_constant_override("v_separation", 5)
+	map.add_child(grid)
+	for i in range(12):
+		var tile := ColorRect.new()
+		tile.custom_minimum_size = Vector2(42, 22)
+		tile.color = GREEN.darkened(0.25) if i in [2, 4, 7] else (RED.darkened(0.1) if i in [5, 10] else PANEL_LIGHT)
+		grid.add_child(tile)
+	var scout := _small_button("SCOUT LOCATION")
+	scout.pressed.connect(func(): _switch_tab("Scavenge"))
+	map.add_child(scout)
+
+	var log := _add_panel(left, Vector2(0, 0))
+	log.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	log.add_child(_label("EVENT LOG", 13, ORANGE))
+	event_log_box = VBoxContainer.new()
+	event_log_box.add_theme_constant_override("separation", 2)
+	log.add_child(event_log_box)
+
+func _build_right_panel(right: VBoxContainer) -> void:
+	var current := _add_panel(right, Vector2(0, 96))
+	current.add_child(_label("CURRENT BUILDING", 13, TEXT))
+	selected_building_label = _label("", 12, TEXT)
+	selected_building_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	current.add_child(selected_building_label)
+
+	var survivors := _add_panel(right, Vector2(0, 0))
+	survivors.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	survivors.add_child(_label("SURVIVORS", 13, GREEN))
+	survivors_box = VBoxContainer.new()
+	survivors_box.add_theme_constant_override("separation", 4)
+	survivors.add_child(survivors_box)
+
+	var defence := _add_panel(right, Vector2(0, 96))
+	defence.add_child(_label("NIGHT DEFENCE", 13, RED))
+	var prep := _small_button("PREPARE DEFENCES")
+	prep.add_theme_color_override("font_color", RED.lightened(0.25))
+	prep.pressed.connect(func(): _show_result(GameManager.prepare_defences()["message"]))
+	defence.add_child(prep)
+
+func _build_command_bar(root: VBoxContainer) -> void:
+	var bottom := HBoxContainer.new()
+	bottom.custom_minimum_size = Vector2(0, 128)
+	bottom.add_theme_constant_override("separation", 5)
+	root.add_child(bottom)
+
+	var tabs := _add_panel(bottom, Vector2(370, 0))
+	tabs.add_child(_label("BUILD & MANAGE", 13, TEXT))
+	var tab_grid := GridContainer.new()
+	tab_grid.columns = 3
+	tab_grid.add_theme_constant_override("h_separation", 4)
+	tab_grid.add_theme_constant_override("v_separation", 4)
+	tabs.add_child(tab_grid)
+	for tab in TABS:
+		var button := _small_button(tab)
+		button.custom_minimum_size = Vector2(112, 40)
 		button.pressed.connect(_switch_tab.bind(tab))
-		nav.add_child(button)
+		tab_grid.add_child(button)
 		tab_buttons[tab] = button
+
+	var commands := _add_panel(bottom, Vector2(0, 0))
+	commands.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	command_title = _label("BUILDINGS", 13, ORANGE)
+	commands.add_child(command_title)
+	command_body = HBoxContainer.new()
+	command_body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	command_body.add_theme_constant_override("separation", 5)
+	commands.add_child(command_body)
+
+	var end := _add_panel(bottom, Vector2(220, 0))
+	end.add_child(_label("NEXT PHASE: NIGHT", 12, MUTED, HORIZONTAL_ALIGNMENT_CENTER))
+	end_day_button = _small_button("END DAY")
+	end_day_button.custom_minimum_size = Vector2(0, 58)
+	end_day_button.add_theme_font_size_override("font_size", 24)
+	end_day_button.add_theme_color_override("font_color", RED.lightened(0.25))
+	end_day_button.pressed.connect(func(): _show_result(GameManager.end_day()["message"]))
+	end.add_child(end_day_button)
+
+func _estate_board() -> PanelContainer:
+	var panel := PanelContainer.new()
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color("#0f1417")
+	style.border_color = Color("#33404a")
+	style.border_width_left = 1
+	style.border_width_top = 1
+	style.border_width_right = 1
+	style.border_width_bottom = 1
+	panel.add_theme_stylebox_override("panel", style)
+
+	var map := Control.new()
+	map.name = "EstateMap"
+	map.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	map.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	panel.add_child(map)
+	map.draw.connect(_draw_estate_map.bind(map))
+	map.resized.connect(func(): _position_building_buttons(map))
+
+	for building in BuildingManager.buildings:
+		var button := Button.new()
+		button.text = _building_button_text(building)
+		button.clip_text = true
+		button.alignment = HORIZONTAL_ALIGNMENT_CENTER
+		button.add_theme_font_size_override("font_size", 12)
+		button.pressed.connect(_select_building.bind(int(building["id"])))
+		map.add_child(button)
+		building_buttons[int(building["id"])] = button
+	for survivor in SurvivorManager.survivors:
+		var token := Button.new()
+		token.text = String(survivor["name"]).substr(0, 1)
+		token.custom_minimum_size = Vector2(22, 22)
+		token.size = Vector2(22, 22)
+		token.add_theme_font_size_override("font_size", 11)
+		token.tooltip_text = "%s - %s" % [survivor["name"], survivor["assigned_task"]]
+		token.pressed.connect(_show_task_popup.bind(int(survivor["id"])))
+		map.add_child(token)
+		survivor_tokens[int(survivor["id"])] = token
+	return panel
+
+func _draw_estate_map(map: Control) -> void:
+	var size := map.size
+	map.draw_rect(Rect2(Vector2.ZERO, size), Color("#101519"), true)
+	for i in range(9):
+		var y := size.y * (0.12 + float(i) * 0.095)
+		map.draw_line(Vector2(0, y), Vector2(size.x, y + sin(i) * 18), Color("#202a30"), 3)
+	for i in range(7):
+		var x := size.x * (0.08 + float(i) * 0.14)
+		map.draw_line(Vector2(x, 0), Vector2(x + cos(i) * 20, size.y), Color("#1c252b"), 3)
+	map.draw_circle(size * Vector2(0.48, 0.5), 24, Color("#d77725"))
+	map.draw_circle(size * Vector2(0.48, 0.5), 15, Color("#34210c"))
+	for i in range(18):
+		var pos := Vector2(fmod(float(i * 73), size.x), fmod(float(i * 47 + 31), size.y))
+		map.draw_circle(pos, 2.0, Color(0.898, 0.608, 0.251, 0.7))
+	for building in BuildingManager.buildings:
+		var rect := _building_rect(map, building)
+		var color := _building_color(building).darkened(0.35)
+		map.draw_rect(rect.grow(3), Color(0.02, 0.024, 0.027, 0.8), true)
+		map.draw_rect(rect, color, true)
+		map.draw_rect(rect, Color(0.471, 0.518, 0.553, 0.55), false, 1)
+
+func _position_building_buttons(map: Control) -> void:
+	for building in BuildingManager.buildings:
+		var id := int(building["id"])
+		if not building_buttons.has(id):
+			continue
+		var button: Button = building_buttons[id]
+		var rect := _building_rect(map, building).grow(-4)
+		button.position = rect.position
+		button.size = rect.size
+
+func _building_rect(map: Control, building: Dictionary) -> Rect2:
+	var layout: Rect2 = BUILDING_LAYOUT.get(String(building["name"]), Rect2(0.4, 0.4, 0.16, 0.16))
+	return Rect2(Vector2(layout.position.x * map.size.x, layout.position.y * map.size.y), Vector2(layout.size.x * map.size.x, layout.size.y * map.size.y))
 
 func _connect_signals() -> void:
 	GameManager.state_changed.connect(_refresh)
@@ -154,197 +329,277 @@ func _switch_tab(tab: String) -> void:
 	active_tab = tab
 	_refresh()
 
+func _select_building(id: int) -> void:
+	selected_building_id = id
+	active_tab = "Buildings"
+	_refresh()
+
 func _refresh() -> void:
-	if resource_bar == null:
+	if resource_row == null:
 		return
-	var r := ResourceManager.resources
-	resource_bar.text = "Food %d  Water %d  Mat %d  Med %d\nAmmo %d  Fuel %d  Power %d  Tools %d" % [r["food"], r["water"], r["materials"], r["medicine"], r["ammo"], r["fuel"], r["power"], r["tools"]]
-	status_bar.text = "Day %d  Pop %d/%d  Mor %d  Sec %d  Noise %d  Inf %d%%" % [r["day_number"], SurvivorManager.get_available_scavengers().size(), r["beds"], r["morale"], r["security"], r["noise"], r["infection_risk"]]
-	objective_label.text = GameManager.current_objective
-	for child in content.get_children():
-		child.queue_free()
-	for tab in TAB_NAMES:
-		tab_buttons[tab].modulate = ORANGE if tab == active_tab else Color.WHITE
-	match active_tab:
-		"Colony":
-			_build_colony()
-		"Buildings":
-			_build_buildings()
-		"Survivors":
-			_build_survivors()
-		"Scavenge":
-			_build_scavenge()
-		"Crafting":
-			_build_crafting()
-		"Defence":
-			_build_defence()
+	_refresh_top_bar()
+	_refresh_alerts()
 	_refresh_log()
+	_refresh_survivors()
+	_refresh_estate()
+	_refresh_selected_building()
+	_refresh_commands()
+
+func _refresh_top_bar() -> void:
+	_clear(resource_row)
+	_clear(colony_strip)
+	var r := ResourceManager.resources
+	var top_resources := [
+		["FOOD", r["food"], GREEN],
+		["WATER", r["water"], BLUE],
+		["FUEL", r["fuel"], ORANGE],
+		["POWER", str(r["power"]) + "%", YELLOW],
+		["MATERIALS", r["materials"], ORANGE],
+		["MEDICINE", r["medicine"], GREEN],
+		["AMMO", r["ammo"], RED],
+		["TOOLS", r["tools"], TEXT],
+	]
+	for item in top_resources:
+		resource_row.add_child(_stat_chip(String(item[0]), str(item[1]), item[2]))
+	colony_strip.add_child(_stat_chip("MORALE", str(r["morale"]) + "%", GREEN))
+	colony_strip.add_child(_stat_chip("SECURITY", str(r["security"]) + "%", BLUE))
+	colony_strip.add_child(_stat_chip("NOISE", str(r["noise"]) + "%", ORANGE))
+	colony_strip.add_child(_stat_chip("THREAT", _threat_label(), RED))
+	var day_label := find_child("day_value", true, false)
+	if day_label != null:
+		day_label.text = str(r["day_number"])
+
+func _refresh_alerts() -> void:
+	objective_body.text = GameManager.current_objective
+	_clear(alerts_box)
+	var r := ResourceManager.resources
+	var alerts: Array = []
+	if int(r["horde_threat"]) >= 40:
+		alerts.append(["ZOMBIE HORDE APPROACHING", RED])
+	if int(r["food"]) < 25:
+		alerts.append(["LOW FOOD SUPPLIES", YELLOW])
+	if int(r["fuel"]) < 15:
+		alerts.append(["GENERATOR LOW FUEL", ORANGE])
+	if int(r["infection_risk"]) >= 20:
+		alerts.append(["INFECTION RISK RISING", GREEN])
+	if alerts.is_empty():
+		alerts.append(["PERIMETER QUIET", GREEN])
+	for alert in alerts:
+		alerts_box.add_child(_label(String(alert[0]), 11, alert[1]))
 
 func _refresh_log() -> void:
-	if log_box == null:
+	if event_log_box == null:
 		return
-	for child in log_box.get_children():
-		child.queue_free()
-	for entry in GameManager.event_log.slice(0, 8):
-		var label := Label.new()
-		label.text = entry
+	_clear(event_log_box)
+	for entry in GameManager.event_log.slice(0, 7):
+		var label := _label(entry, 10, TEXT)
 		label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		label.add_theme_font_size_override("font_size", _scaled(10))
-		log_box.add_child(label)
+		event_log_box.add_child(label)
 
-func _build_colony() -> void:
-	_add_section("Warehouse Status", "Survivors hold one warehouse unit in a British industrial estate. Keep food, water, morale, and security stable.")
-	var summary := _card()
-	summary.add_child(_heading("Daily Work"))
-	summary.add_child(_body(_task_summary()))
-	var end_day := Button.new()
-	end_day.text = "Resolve Night / End Day"
-	end_day.custom_minimum_size = Vector2(0, _scaled(44))
-	end_day.add_theme_font_size_override("font_size", _scaled(13))
-	end_day.pressed.connect(func(): _show_result(GameManager.end_day()["message"]))
-	content.add_child(end_day)
-	var save := Button.new()
-	save.text = "Manual Save"
-	save.custom_minimum_size = Vector2(0, _scaled(42))
-	save.add_theme_font_size_override("font_size", _scaled(13))
-	save.pressed.connect(func(): _show_result("Saved." if GameManager.manual_save() else "Save failed."))
-	content.add_child(save)
-
-func _build_buildings() -> void:
-	for building in BuildingManager.buildings:
-		var card := _card()
-		card.add_child(_heading("%s [%s]" % [building["name"], building["type"]]))
-		card.add_child(_body("Status: %s\nCondition: %d  Security: %d  Infestation: %d\nUse: %s  Capacity: %d\nAssigned: %s" % [building["status"], building["condition"], building["security"], building["infestation"], building["current_use"], building["capacity"], _assigned_names(building.get("assigned_survivors", []))]))
+func _refresh_survivors() -> void:
+	_clear(survivors_box)
+	for survivor in SurvivorManager.survivors.slice(0, 6):
 		var row := HBoxContainer.new()
-		row.add_theme_constant_override("separation", 4)
-		for action in ["Scout", "Clear", "Claim", "Repair", "Fortify"]:
-			var button := Button.new()
-			button.text = action
-			button.custom_minimum_size = Vector2(0, _scaled(38))
-			button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-			button.add_theme_font_size_override("font_size", _scaled(11))
-			button.pressed.connect(_on_building_action.bind(int(building["id"]), action))
-			row.add_child(button)
-		card.add_child(row)
-		var controls := GridContainer.new()
-		controls.columns = 2
-		controls.add_theme_constant_override("h_separation", 6)
-		controls.add_theme_constant_override("v_separation", 6)
-		var use_select := OptionButton.new()
-		use_select.custom_minimum_size = Vector2(0, _scaled(38))
-		use_select.add_theme_font_size_override("font_size", _scaled(11))
-		for use_name in BuildingManager.USES:
-			use_select.add_item(use_name)
-			if String(building.get("current_use", "")) == use_name:
-				use_select.select(use_select.get_item_count() - 1)
-		var building_id := int(building["id"])
-		if not selected_building_use.has(building_id):
-			selected_building_use[building_id] = String(building.get("current_use", BuildingManager.USES[0])) if BuildingManager.USES.has(String(building.get("current_use", ""))) else BuildingManager.USES[0]
-		use_select.item_selected.connect(_on_building_use_selected.bind(use_select, building_id))
-		controls.add_child(use_select)
-		var use_button := Button.new()
-		use_button.text = "Set Use"
-		use_button.custom_minimum_size = Vector2(0, _scaled(38))
-		use_button.add_theme_font_size_override("font_size", _scaled(11))
-		use_button.pressed.connect(_on_assign_building_use.bind(building_id))
-		controls.add_child(use_button)
-		var survivor_select := _survivor_selector(building_id)
-		survivor_select.item_selected.connect(_on_building_survivor_selected.bind(survivor_select, building_id))
-		controls.add_child(survivor_select)
-		var survivor_button := Button.new()
-		survivor_button.text = "Assign"
-		survivor_button.custom_minimum_size = Vector2(0, _scaled(38))
-		survivor_button.add_theme_font_size_override("font_size", _scaled(11))
-		survivor_button.pressed.connect(_on_assign_survivor_to_building.bind(building_id))
-		controls.add_child(survivor_button)
-		card.add_child(controls)
+		row.add_theme_constant_override("separation", 5)
+		survivors_box.add_child(row)
+		var portrait := ColorRect.new()
+		portrait.custom_minimum_size = Vector2(34, 34)
+		portrait.color = _role_color(String(survivor["role"]))
+		row.add_child(portrait)
+		var details := VBoxContainer.new()
+		details.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row.add_child(details)
+		details.add_child(_label("%s  %s%%" % [survivor["name"], survivor["morale"]], 12, TEXT))
+		details.add_child(_label("%s - %s" % [survivor["role"], survivor["assigned_task"]], 9, MUTED))
+		var task := _small_button("Assign")
+		task.custom_minimum_size = Vector2(58, 34)
+		task.pressed.connect(_show_task_popup.bind(int(survivor["id"])))
+		row.add_child(task)
 
-func _build_survivors() -> void:
-	for survivor in SurvivorManager.survivors:
-		var card := _card()
-		card.add_child(_heading("%s - %s" % [survivor["name"], survivor["role"]]))
-		card.add_child(_body("Health: %d  Morale: %d  Loyalty: %d\nInfection: %d%%  Task: %s\nTraits: %s" % [survivor["health"], survivor["morale"], survivor["loyalty"], survivor["infection_risk"], survivor["assigned_task"], ", ".join(survivor["traits"])]))
-		var task_grid := GridContainer.new()
-		task_grid.columns = 3
-		for task in SurvivorManager.TASKS:
-			var button := Button.new()
-			button.text = task
-			button.custom_minimum_size = Vector2(0, _scaled(38))
-			button.add_theme_font_size_override("font_size", _scaled(11))
-			button.pressed.connect(GameManager.assign_survivor_task.bind(int(survivor["id"]), task))
-			task_grid.add_child(button)
-		card.add_child(task_grid)
-
-func _build_scavenge() -> void:
-	var survivors := SurvivorManager.get_available_scavengers()
-	if survivors.is_empty():
-		_add_section("No Scavengers", "No living survivors can scavenge.")
+func _refresh_estate() -> void:
+	if estate_board == null:
 		return
-	if not _survivor_id_exists(selected_scavenger_id):
-		selected_scavenger_id = int(survivors[0]["id"])
-	var selector_card := _card()
-	selector_card.add_child(_heading("Scavenging Team"))
-	selector_card.add_child(_body("Choose who goes outside the estate. Injuries and infection risk can hit anyone, but the assigned scavenger changes task automatically."))
+	var map := estate_board.get_child(0) as Control
+	if map == null:
+		return
+	for building in BuildingManager.buildings:
+		var id := int(building["id"])
+		if building_buttons.has(id):
+			var button: Button = building_buttons[id]
+			button.text = _building_button_text(building)
+			button.modulate = ORANGE if id == selected_building_id else Color.WHITE
+	_position_building_buttons(map)
+	_position_survivor_tokens(map)
+	map.queue_redraw()
+
+func _position_survivor_tokens(map: Control) -> void:
+	for survivor in SurvivorManager.survivors:
+		var id := int(survivor["id"])
+		if not survivor_tokens.has(id):
+			var token := Button.new()
+			token.text = String(survivor["name"]).substr(0, 1)
+			token.custom_minimum_size = Vector2(22, 22)
+			token.size = Vector2(22, 22)
+			token.add_theme_font_size_override("font_size", 11)
+			token.pressed.connect(_show_task_popup.bind(id))
+			map.add_child(token)
+			survivor_tokens[id] = token
+		var token: Button = survivor_tokens[id]
+		token.tooltip_text = "%s - %s" % [survivor["name"], survivor["assigned_task"]]
+		token.modulate = _role_color(String(survivor["role"]))
+		var destination := _survivor_destination(map, survivor, id)
+		var tween := create_tween()
+		tween.tween_property(token, "position", destination - token.size * 0.5, 0.45).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+
+func _survivor_destination(map: Control, survivor: Dictionary, id: int) -> Vector2:
+	var building := _building_for_survivor(survivor)
+	var rect := _building_rect(map, building) if not building.is_empty() else Rect2(map.size * Vector2(0.45, 0.48), Vector2(80, 60))
+	var offset := Vector2(float((id * 23) % 46) - 23.0, float((id * 37) % 34) - 17.0)
+	match String(survivor.get("assigned_task", "Rest")):
+		"Guard":
+			offset += Vector2(32, -28)
+		"Scavenge", "Scout":
+			offset += Vector2(-40, 30)
+		"Build", "Repair":
+			offset += Vector2(28, 22)
+		"Medical":
+			offset += Vector2(-8, -18)
+		"Cook":
+			offset += Vector2(0, 24)
+	return rect.position + rect.size * 0.5 + offset
+
+func _building_for_survivor(survivor: Dictionary) -> Dictionary:
+	var assigned_building := String(survivor.get("assigned_building", ""))
+	for building in BuildingManager.buildings:
+		if String(building["name"]) == assigned_building:
+			return building
+	match String(survivor.get("assigned_task", "Rest")):
+		"Guard":
+			return _building_by_use_or_name("Watch Post", "Security Office")
+		"Build", "Repair":
+			return _building_by_use_or_name("Workshop", "Signage Workshop")
+		"Medical":
+			return _building_by_use_or_name("Medical Bay", "Pharmacy")
+		"Cook":
+			return _building_by_use_or_name("Food Prep", "Food Distribution Unit")
+		"Scavenge", "Scout":
+			return _building_by_use_or_name("Vehicle Bay", "Garage")
+	return _building_by_use_or_name("Sleeping Quarters", "Main Warehouse")
+
+func _building_by_use_or_name(use_name: String, fallback_name: String) -> Dictionary:
+	for building in BuildingManager.buildings:
+		if String(building.get("current_use", "")) == use_name:
+			return building
+	for building in BuildingManager.buildings:
+		if String(building.get("name", "")) == fallback_name:
+			return building
+	return _selected_building()
+
+func _refresh_selected_building() -> void:
+	var building := _selected_building()
+	if building.is_empty():
+		selected_building_label.text = "Select a building."
+		return
+	selected_building_label.text = "%s\n%s | %s\nCond %d  Sec %d  Inf %d" % [building["name"], building["status"], building["current_use"], building["condition"], building["security"], building["infestation"]]
+
+func _refresh_commands() -> void:
+	for tab in TABS:
+		tab_buttons[tab].modulate = ORANGE if tab == active_tab else Color.WHITE
+	_clear(command_body)
+	command_title.text = active_tab.to_upper()
+	match active_tab:
+		"Buildings":
+			_build_building_commands()
+		"Survivors":
+			_build_survivor_commands()
+		"Scavenge":
+			_build_scavenge_commands()
+		"Crafting":
+			_build_crafting_commands()
+		"Map":
+			_build_map_commands()
+		"Radio":
+			_build_radio_commands()
+
+func _build_building_commands() -> void:
+	var building := _selected_building()
+	if building.is_empty():
+		command_body.add_child(_label("Tap a building in the estate.", 13, TEXT))
+		return
+	for action in ["Scout", "Clear", "Claim", "Repair", "Fortify"]:
+		var button := _small_button(action)
+		button.custom_minimum_size = Vector2(94, 54)
+		button.pressed.connect(_on_building_action.bind(int(building["id"]), action))
+		command_body.add_child(button)
+	var use_select := OptionButton.new()
+	use_select.custom_minimum_size = Vector2(160, 54)
+	for use_name in BuildingManager.USES:
+		use_select.add_item(use_name)
+		if String(building.get("current_use", "")) == use_name:
+			use_select.select(use_select.get_item_count() - 1)
+	var id := int(building["id"])
+	selected_building_use[id] = String(building.get("current_use", BuildingManager.USES[0])) if not selected_building_use.has(id) else selected_building_use[id]
+	use_select.item_selected.connect(_on_building_use_selected.bind(use_select, id))
+	command_body.add_child(use_select)
+	var set_use := _small_button("SET USE")
+	set_use.custom_minimum_size = Vector2(90, 54)
+	set_use.pressed.connect(_on_assign_building_use.bind(id))
+	command_body.add_child(set_use)
+
+func _build_survivor_commands() -> void:
+	for survivor in SurvivorManager.survivors.slice(0, 5):
+		var button := _small_button("%s\n%s" % [survivor["name"], survivor["assigned_task"]])
+		button.custom_minimum_size = Vector2(112, 54)
+		button.pressed.connect(_show_task_popup.bind(int(survivor["id"])))
+		command_body.add_child(button)
+
+func _build_scavenge_commands() -> void:
 	var selector := OptionButton.new()
-	selector.custom_minimum_size = Vector2(0, _scaled(42))
-	selector.add_theme_font_size_override("font_size", _scaled(12))
-	for survivor in survivors:
-		selector.add_item("%s - %s" % [survivor["name"], survivor["role"]], int(survivor["id"]))
+	selector.custom_minimum_size = Vector2(150, 54)
+	for survivor in SurvivorManager.get_available_scavengers():
+		selector.add_item(String(survivor["name"]), int(survivor["id"]))
 		if int(survivor["id"]) == selected_scavenger_id:
 			selector.select(selector.get_item_count() - 1)
 	selector.item_selected.connect(_on_scavenger_selected.bind(selector))
-	selector_card.add_child(selector)
-	for location in ScavengeManager.locations:
-		var card := _card()
-		card.add_child(_heading(location["name"]))
-		card.add_child(_body("Danger: %s  Alarm: %s\nLoot: %s\nPossible survivors: %s" % [location["danger"], location["alarm_risk"], ", ".join(location["loot"]), "Yes" if location["possible_survivors"] else "No"]))
-		var button := Button.new()
-		button.text = "Start Scavenge"
-		button.custom_minimum_size = Vector2(0, _scaled(42))
-		button.add_theme_font_size_override("font_size", _scaled(13))
+	command_body.add_child(selector)
+	for location in ScavengeManager.locations.slice(0, 4):
+		var button := _small_button(String(location["name"]))
+		button.custom_minimum_size = Vector2(132, 54)
 		button.pressed.connect(_on_scavenge.bind(String(location["name"])))
-		card.add_child(button)
+		command_body.add_child(button)
 
-func _build_crafting() -> void:
-	_add_section("Crafting Prototype", "Use materials to make emergency supplies while the workshop system is expanded.")
-	var ammo := Button.new()
-	ammo.text = "Craft Ammo (-12 materials, +6 ammo)"
-	ammo.custom_minimum_size = Vector2(0, _scaled(42))
-	ammo.add_theme_font_size_override("font_size", _scaled(12))
+func _build_crafting_commands() -> void:
+	var ammo := _small_button("CRAFT AMMO\n-12 mat +6")
+	ammo.custom_minimum_size = Vector2(130, 54)
 	ammo.pressed.connect(func(): _craft("materials", 12, "ammo", 6))
-	content.add_child(ammo)
-	var med := Button.new()
-	med.text = "Pack Med Kits (-8 materials, +3 medicine)"
-	med.custom_minimum_size = Vector2(0, _scaled(42))
-	med.add_theme_font_size_override("font_size", _scaled(12))
+	command_body.add_child(ammo)
+	var med := _small_button("MED KITS\n-8 mat +3")
+	med.custom_minimum_size = Vector2(130, 54)
 	med.pressed.connect(func(): _craft("materials", 8, "medicine", 3))
-	content.add_child(med)
+	command_body.add_child(med)
 
-func _build_defence() -> void:
-	var preview := NightDefenseManager.get_preview()
-	_add_section("Night Defence", "Threat: %d\nDefence: %d\nGuards: %d\nFortified bonus: %d" % [preview["attack_strength"], preview["defence_strength"], preview["guards"], preview["fortified_bonus"]])
-	var prep := Button.new()
-	prep.text = "Prepare Defences"
-	prep.custom_minimum_size = Vector2(0, _scaled(42))
-	prep.add_theme_font_size_override("font_size", _scaled(13))
-	prep.pressed.connect(func(): _show_result(GameManager.prepare_defences()["message"]))
-	content.add_child(prep)
-	var night := Button.new()
-	night.text = "Resolve Night / End Day"
-	night.custom_minimum_size = Vector2(0, _scaled(42))
-	night.add_theme_font_size_override("font_size", _scaled(13))
-	night.pressed.connect(func(): _show_result(GameManager.end_day()["message"]))
-	content.add_child(night)
+func _build_map_commands() -> void:
+	for location in ScavengeManager.locations:
+		var danger := String(location["danger"]).to_upper()
+		var button := _small_button("%s\n%s" % [location["name"], danger])
+		button.custom_minimum_size = Vector2(130, 54)
+		button.pressed.connect(_switch_tab.bind("Scavenge"))
+		command_body.add_child(button)
 
-func _craft(cost_key: String, cost: int, gain_key: String, gain: int) -> void:
-	if ResourceManager.spend_resource(cost_key, cost):
-		ResourceManager.add_resource(gain_key, gain)
-		GameManager.add_log("Crafted +%d %s." % [gain, gain_key])
-		_show_result("Crafting complete.")
-	else:
-		_show_result("Not enough %s." % cost_key)
-	_refresh()
+func _build_radio_commands() -> void:
+	var radio := _small_button("CALL RADIO\n-2 power")
+	radio.custom_minimum_size = Vector2(130, 54)
+	radio.pressed.connect(func():
+		ResourceManager.add_resource("power", -2)
+		ResourceManager.add_resource("horde_threat", -2)
+		GameManager.add_log("Radio scan reduced horde uncertainty.")
+		_show_result("Radio scan complete. Horde threat reduced.")
+	)
+	command_body.add_child(radio)
+	var save := _small_button("SAVE")
+	save.custom_minimum_size = Vector2(90, 54)
+	save.pressed.connect(func(): _show_result("Saved." if GameManager.manual_save() else "Save failed."))
+	command_body.add_child(save)
 
 func _on_building_action(id: int, action: String) -> void:
 	_show_result(GameManager.building_action(id, action)["message"])
@@ -361,16 +616,27 @@ func _on_building_use_selected(index: int, selector: OptionButton, building_id: 
 func _on_assign_building_use(building_id: int) -> void:
 	_show_result(GameManager.assign_building_use(building_id, String(selected_building_use.get(building_id, BuildingManager.USES[0])))["message"])
 
-func _on_building_survivor_selected(index: int, selector: OptionButton, building_id: int) -> void:
-	selected_building_survivor[building_id] = selector.get_item_id(index)
+func _craft(cost_key: String, cost: int, gain_key: String, gain: int) -> void:
+	if ResourceManager.spend_resource(cost_key, cost):
+		ResourceManager.add_resource(gain_key, gain)
+		GameManager.add_log("Crafted +%d %s." % [gain, gain_key])
+		_show_result("Crafting complete.")
+	else:
+		_show_result("Not enough %s." % cost_key)
+	_refresh()
 
-func _on_assign_survivor_to_building(building_id: int) -> void:
-	var survivors := SurvivorManager.get_available_scavengers()
-	if survivors.is_empty():
-		_show_result("No survivors available.")
-		return
-	var survivor_id := int(selected_building_survivor.get(building_id, int(survivors[0]["id"])))
-	_show_result(GameManager.assign_survivor_to_building(building_id, survivor_id)["message"])
+func _show_task_popup(survivor_id: int) -> void:
+	var dialog := AcceptDialog.new()
+	dialog.title = "Assign Survivor"
+	dialog.dialog_text = "Choose a task for %s." % SurvivorManager.get_survivor_name(survivor_id)
+	add_child(dialog)
+	for task in SurvivorManager.TASKS:
+		dialog.add_button(task, false, task)
+	dialog.custom_action.connect(func(action: StringName):
+		GameManager.assign_survivor_task(survivor_id, String(action))
+		dialog.queue_free()
+	)
+	dialog.popup_centered(Vector2(380, 260))
 
 func _show_recruit_popup(recruit: Dictionary) -> void:
 	var dialog := AcceptDialog.new()
@@ -393,17 +659,68 @@ func _show_result(message: String) -> void:
 	dialog.dialog_text = message
 	add_child(dialog)
 	dialog.confirmed.connect(dialog.queue_free)
-	dialog.popup_centered()
+	dialog.popup_centered(Vector2(420, 220))
 	_refresh()
 
-func _add_section(title: String, body: String) -> void:
-	var card := _card()
-	card.add_child(_heading(title))
-	card.add_child(_body(body))
+func _selected_building() -> Dictionary:
+	for building in BuildingManager.buildings:
+		if int(building["id"]) == selected_building_id:
+			return building
+	return {}
 
-func _card() -> VBoxContainer:
-	var card := PanelContainer.new()
-	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+func _building_button_text(building: Dictionary) -> String:
+	var assigned := Array(building.get("assigned_survivors", []))
+	return "%s\n%s  %d/%d" % [building["name"], building["status"], assigned.size(), int(building.get("capacity", 0))]
+
+func _building_color(building: Dictionary) -> Color:
+	match String(building.get("status", "")):
+		"Unknown":
+			return Color("#3b4148")
+		"Scouted":
+			return BLUE
+		"Infested":
+			return RED
+		"Cleared":
+			return YELLOW
+		"Claimed", "Operational":
+			return GREEN
+		"Fortified":
+			return ORANGE
+		"Lost":
+			return Color("#1a1a1a")
+	return PANEL_LIGHT
+
+func _role_color(role: String) -> Color:
+	match role:
+		"Medic":
+			return GREEN
+		"Guard":
+			return RED
+		"Cook":
+			return YELLOW
+		"Builder", "Sign Fitter":
+			return ORANGE
+	return BLUE
+
+func _threat_label() -> String:
+	var threat := ResourceManager.get_value("horde_threat")
+	if threat >= 50:
+		return "HIGH"
+	if threat >= 25:
+		return "MED"
+	return "LOW"
+
+func _add_panel(parent: Container, min_size: Vector2) -> VBoxContainer:
+	var framed := _create_panel(min_size)
+	parent.add_child(framed["panel"])
+	var box: VBoxContainer = framed["box"]
+	return box
+
+func _create_panel(min_size: Vector2) -> Dictionary:
+	var panel := PanelContainer.new()
+	panel.custom_minimum_size = min_size
+	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL if min_size.x == 0 else Control.SIZE_SHRINK_CENTER
+	panel.size_flags_vertical = Control.SIZE_EXPAND_FILL if min_size.y == 0 else Control.SIZE_SHRINK_CENTER
 	var style := StyleBoxFlat.new()
 	style.bg_color = PANEL
 	style.border_color = Color("#3e4852")
@@ -411,77 +728,54 @@ func _card() -> VBoxContainer:
 	style.border_width_top = 1
 	style.border_width_right = 1
 	style.border_width_bottom = 1
-	style.corner_radius_top_left = 6
-	style.corner_radius_top_right = 6
-	style.corner_radius_bottom_left = 6
-	style.corner_radius_bottom_right = 6
-	card.add_theme_stylebox_override("panel", style)
+	style.corner_radius_top_left = 3
+	style.corner_radius_top_right = 3
+	style.corner_radius_bottom_left = 3
+	style.corner_radius_bottom_right = 3
+	panel.add_theme_stylebox_override("panel", style)
+
 	var margin := MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", _scaled(8))
-	margin.add_theme_constant_override("margin_right", _scaled(8))
-	margin.add_theme_constant_override("margin_top", _scaled(7))
-	margin.add_theme_constant_override("margin_bottom", _scaled(7))
+	margin.add_theme_constant_override("margin_left", 7)
+	margin.add_theme_constant_override("margin_right", 7)
+	margin.add_theme_constant_override("margin_top", 6)
+	margin.add_theme_constant_override("margin_bottom", 6)
+	panel.add_child(margin)
+
 	var box := VBoxContainer.new()
 	box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	box.add_theme_constant_override("separation", _scaled(5))
+	box.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	box.add_theme_constant_override("separation", 4)
 	margin.add_child(box)
-	card.add_child(margin)
-	content.add_child(card)
-	return box
+	return {"panel": panel, "box": box}
 
-func _heading(text: String) -> Label:
+func _stat_chip(title: String, value: String, color: Color) -> PanelContainer:
+	var framed := _create_panel(Vector2(0, 0))
+	var chip: VBoxContainer = framed["box"]
+	chip.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	chip.add_child(_label(title, 9, MUTED, HORIZONTAL_ALIGNMENT_CENTER))
+	chip.add_child(_label(value, 16, color, HORIZONTAL_ALIGNMENT_CENTER))
+	var panel: PanelContainer = framed["panel"]
+	return panel
+
+func _small_button(text: String) -> Button:
+	var button := Button.new()
+	button.text = text
+	button.clip_text = true
+	button.custom_minimum_size = Vector2(0, 38)
+	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	button.add_theme_font_size_override("font_size", 12)
+	return button
+
+func _label(text: String, size: int, color: Color, align := HORIZONTAL_ALIGNMENT_LEFT, node_name := "") -> Label:
 	var label := Label.new()
+	if node_name != "":
+		label.name = node_name
 	label.text = text
-	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	label.add_theme_font_size_override("font_size", _scaled(15))
-	label.add_theme_color_override("font_color", ORANGE)
+	label.horizontal_alignment = align
+	label.add_theme_font_size_override("font_size", size)
+	label.add_theme_color_override("font_color", color)
 	return label
 
-func _body(text: String) -> Label:
-	var label := Label.new()
-	label.text = text
-	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	label.add_theme_font_size_override("font_size", _scaled(12))
-	return label
-
-func _survivor_selector(building_id: int) -> OptionButton:
-	var selector := OptionButton.new()
-	selector.custom_minimum_size = Vector2(0, _scaled(38))
-	selector.add_theme_font_size_override("font_size", _scaled(11))
-	var survivors := SurvivorManager.get_available_scavengers()
-	for survivor in survivors:
-		selector.add_item(String(survivor["name"]), int(survivor["id"]))
-		if int(survivor["id"]) == int(selected_building_survivor.get(building_id, -1)):
-			selector.select(selector.get_item_count() - 1)
-	if not survivors.is_empty() and not selected_building_survivor.has(building_id):
-		selected_building_survivor[building_id] = int(survivors[0]["id"])
-	return selector
-
-func _assigned_names(ids) -> String:
-	if ids.is_empty():
-		return "None"
-	var names: Array = []
-	for id in ids:
-		names.append(SurvivorManager.get_survivor_name(int(id)))
-	return ", ".join(names)
-
-func _survivor_id_exists(id: int) -> bool:
-	for survivor in SurvivorManager.get_available_scavengers():
-		if int(survivor["id"]) == id:
-			return true
-	return false
-
-func _task_summary() -> String:
-	var counts := {}
-	for task in SurvivorManager.TASKS:
-		counts[task] = 0
-	for survivor in SurvivorManager.get_available_scavengers():
-		var task := String(survivor.get("assigned_task", "Rest"))
-		counts[task] = int(counts.get(task, 0)) + 1
-	var parts: Array = []
-	for task in SurvivorManager.TASKS:
-		if int(counts[task]) > 0:
-			parts.append("%s: %d" % [task, counts[task]])
-	return "\n".join(parts)
+func _clear(node: Node) -> void:
+	for child in node.get_children():
+		child.queue_free()
