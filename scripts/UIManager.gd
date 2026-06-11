@@ -2,7 +2,7 @@ extends Control
 
 @export var initial_tab := "Buildings"
 
-const TABS := ["Buildings", "Survivors", "Scavenge", "Crafting", "Map", "Radio"]
+const TABS := ["Buildings", "Survivors", "Scavenge", "Crafting", "Defence", "Radio"]
 const BG := Color("#080b0d")
 const PANEL := Color("#13181d")
 const PANEL_DARK := Color("#0d1115")
@@ -224,7 +224,7 @@ func _build_right_panel(right: VBoxContainer) -> void:
 	defence.add_child(night_preview_label)
 	var prep := _small_button("PREPARE DEFENCES")
 	prep.add_theme_color_override("font_color", RED.lightened(0.25))
-	prep.pressed.connect(func(): _show_result(GameManager.prepare_defences()["message"]))
+	prep.pressed.connect(func(): _switch_tab("Defence"))
 	defence.add_child(prep)
 
 func _build_command_bar(root: VBoxContainer) -> void:
@@ -657,8 +657,8 @@ func _refresh_commands() -> void:
 			_build_scavenge_commands()
 		"Crafting":
 			_build_crafting_commands()
-		"Map":
-			_build_map_commands()
+		"Defence":
+			_build_defence_commands()
 		"Radio":
 			_build_radio_commands()
 
@@ -751,13 +751,16 @@ func _build_crafting_commands() -> void:
 		button.pressed.connect(_on_install_upgrade.bind(int(building["id"]), String(upgrade_id)))
 		command_body.add_child(button)
 
-func _build_map_commands() -> void:
-	for location in ScavengeManager.locations:
-		var danger := String(location["danger"]).to_upper()
-		var button := _small_button("%s\n%s | %s" % [location["name"], danger, _location_state_text(location)])
-		button.custom_minimum_size = Vector2(130, 54)
-		button.disabled = not bool(ScavengeManager.can_scavenge(String(location["name"])).get("ok", false))
-		button.pressed.connect(_switch_tab.bind("Scavenge"))
+func _build_defence_commands() -> void:
+	var preview := NightDefenseManager.get_preview()
+	command_body.add_child(_label("Attack %d  Defence %d" % [int(preview["attack_strength"]), int(preview["defence_strength"])], 13, TEXT))
+	for tactic_id in NightDefenseManager.DEFENCE_TACTICS.keys():
+		var tactic: Dictionary = NightDefenseManager.DEFENCE_TACTICS[tactic_id]
+		var button := _small_button("%s\n%s" % [tactic["name"], _cost_text(Dictionary(tactic["cost"]))])
+		button.custom_minimum_size = Vector2(150, 54)
+		button.disabled = not _can_afford(Dictionary(tactic["cost"]))
+		button.tooltip_text = String(tactic["message"])
+		button.pressed.connect(_on_prepare_defence.bind(String(tactic_id)))
 		command_body.add_child(button)
 
 func _build_radio_commands() -> void:
@@ -783,6 +786,9 @@ func _on_scavenge(location_name: String) -> void:
 
 func _on_scavenger_selected(index: int, selector: OptionButton) -> void:
 	selected_scavenger_id = selector.get_item_id(index)
+
+func _on_prepare_defence(tactic_id: String) -> void:
+	_show_result(GameManager.prepare_defences(tactic_id)["message"])
 
 func _on_building_use_selected(index: int, selector: OptionButton, building_id: int) -> void:
 	selected_building_use[building_id] = selector.get_item_text(index)
@@ -847,7 +853,8 @@ func _show_result(message: String) -> void:
 	dialog.dialog_text = message
 	add_child(dialog)
 	dialog.confirmed.connect(dialog.queue_free)
-	dialog.popup_centered(Vector2(420, 220))
+	var lines := message.count("\n") + 1
+	dialog.popup_centered(Vector2(520, 360) if lines > 3 else Vector2(420, 220))
 	_refresh()
 
 func _show_game_over(message: String) -> void:
@@ -891,6 +898,9 @@ func _can_install_upgrade(building: Dictionary, upgrade_id: String) -> bool:
 	if Array(building.get("upgrades", [])).has(upgrade_id):
 		return false
 	var cost: Dictionary = BuildingManager.UPGRADES[upgrade_id]["cost"]
+	return _can_afford(cost)
+
+func _can_afford(cost: Dictionary) -> bool:
 	for key in cost.keys():
 		if ResourceManager.get_value(String(key)) < int(cost[key]):
 			return false

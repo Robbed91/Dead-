@@ -137,10 +137,10 @@ func handle_recruit(choice: String) -> void:
 	_update_objective()
 	state_changed.emit()
 
-func prepare_defences() -> Dictionary:
+func prepare_defences(tactic_id := "patch_barricades") -> Dictionary:
 	if is_game_over():
 		return {"ok": false, "message": game_over_message}
-	var result := NightDefenseManager.prepare_defences()
+	var result := NightDefenseManager.prepare_defences(tactic_id)
 	add_log(result["message"])
 	phase = "Defence"
 	_update_objective()
@@ -150,25 +150,34 @@ func prepare_defences() -> Dictionary:
 func end_day() -> Dictionary:
 	if is_game_over():
 		return {"ok": false, "message": game_over_message}
+	var report: Array = []
 	phase = "Night"
 	var night := NightDefenseManager.resolve_night()
 	add_log(night["message"])
+	report.append(night["message"])
 	for message in SurvivorManager.apply_task_effects():
 		add_log(message)
+		report.append(message)
 	for message in BuildingManager.apply_use_bonuses():
 		add_log(message)
+		report.append(message)
 	for message in SurvivorManager.apply_condition_progression():
 		add_log(message)
+		report.append(message)
 	var colony_event := _resolve_colony_event()
 	if colony_event != "":
 		add_log(colony_event)
+		report.append(colony_event)
 	for message in ScavengeManager.advance_day():
 		add_log(message)
+		report.append(message)
 	var consumption := ResourceManager.apply_daily_consumption(SurvivorManager.get_available_scavengers().size())
 	if int(consumption["shortage"]) > 0:
 		add_log("Food or water shortage hurt morale.")
+		report.append("Food or water shortage hurt morale.")
 	else:
 		add_log("Rations issued: %d food, %d water." % [consumption["food_needed"], consumption["water_needed"]])
+		report.append("Rations issued: %d food, %d water." % [consumption["food_needed"], consumption["water_needed"]])
 	ResourceManager.advance_day()
 	phase = "Morning"
 	_check_failure_state()
@@ -176,6 +185,8 @@ func end_day() -> Dictionary:
 	add_log("Auto-save complete. Morning begins.")
 	SaveManager.save_game(event_log)
 	state_changed.emit()
+	night["daily_report"] = report
+	night["message"] = "Night Report\n%s" % "\n".join(report.slice(0, 9))
 	return night
 
 func reset_save_and_game() -> void:

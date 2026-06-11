@@ -44,6 +44,10 @@ func _run() -> void:
 	var preview := NightDefenseManager.get_preview()
 	_assert_true(int(preview.get("attack_strength", 0)) > 0, "night attack preview calculates attack")
 	_assert_true(int(preview.get("defence_strength", 0)) > 0, "night attack preview calculates defence")
+	var noise_before_tactic := ResourceManager.get_value("noise")
+	var tactic := GameManager.prepare_defences("quiet_watch")
+	_assert_true(bool(tactic.get("ok", false)), "can prepare a named defence tactic")
+	_assert_true(ResourceManager.get_value("noise") < noise_before_tactic, "quiet watch reduces noise")
 
 	var billy := SurvivorManager.survivors[0]
 	billy["health"] = 64
@@ -62,8 +66,9 @@ func _run() -> void:
 	_assert_eq(ResourceManager.get_value("food"), food_before_save, "saved resources restore correctly")
 
 	var day_before := ResourceManager.get_value("day_number")
-	GameManager.end_day()
+	var night_result := GameManager.end_day()
 	_assert_eq(ResourceManager.get_value("day_number"), day_before + 1, "end day advances the day")
+	_assert_true(Array(night_result.get("daily_report", [])).size() > 0, "end day returns a report")
 	_assert_true(int(_location("Tool Hire Depot").get("remaining", 0)) >= depot_remaining_after_scavenge, "locations recover or remain stable after day advances")
 
 	if failures.is_empty():

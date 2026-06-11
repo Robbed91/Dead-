@@ -22,6 +22,8 @@ Dead Shift is a Godot 4 mobile Android prototype for a 2D zombie survival colony
 - Daily survivor jobs and building uses apply small resource, security, morale, infection, and horde-threat effects.
 - Random end-of-day events can add storage finds, generator problems, ration disputes, rain collection, horde movement, or clinic treatment.
 - Prepare defences and resolve the night attack.
+- Choose defence tactics before nightfall: Patch Barricades, Ammo Traps, or Quiet Watch.
+- End Day shows a compact night report covering combat, survivor jobs, building bonuses, events, scavenging recovery, rations, and auto-save.
 - Consume food and water, update morale and threat, auto-save, and advance the day.
 - Continue from `user://dead_shift_save.json`.
 
@@ -86,7 +88,7 @@ A headless smoke test checks the core loop managers without manual clicking:
 Godot_v4.6.3-stable_win64.exe --headless --path . -s tests/SmokeTest.gd
 ```
 
-It starts a new game, claims a building, installs an upgrade, starts and completes a scavenge job, checks location depletion/recovery, checks survivor condition progression, previews night defence, saves, reloads, and ends the day. The test backs up and restores any existing `user://dead_shift_save.json`.
+It starts a new game, claims a building, installs an upgrade, starts and completes a scavenge job, checks location depletion/recovery, checks survivor condition progression, prepares a named defence tactic, previews night defence, saves, reloads, and ends the day. The test backs up and restores any existing `user://dead_shift_save.json`.
 
 ## Android Landscape Orientation
 

@@ -2,6 +2,33 @@ extends Node
 
 signal night_resolved(result: Dictionary)
 
+const DEFENCE_TACTICS := {
+	"patch_barricades": {
+		"name": "Patch Barricades",
+		"cost": {"materials": 8},
+		"security": 4,
+		"noise": 2,
+		"horde_threat": 0,
+		"message": "Barricades patched. Security +4, noise +2."
+	},
+	"ammo_traps": {
+		"name": "Ammo Traps",
+		"cost": {"materials": 6, "ammo": 3},
+		"security": 7,
+		"noise": 4,
+		"horde_threat": -1,
+		"message": "Ammo traps laid near the fence. Security +7, noise +4, threat -1."
+	},
+	"quiet_watch": {
+		"name": "Quiet Watch",
+		"cost": {"fuel": 2},
+		"security": 1,
+		"noise": -7,
+		"horde_threat": -2,
+		"message": "Quiet watch posted. Noise -7, threat -2, security +1."
+	}
+}
+
 func get_preview() -> Dictionary:
 	var attack_strength := ResourceManager.get_value("day_number") * 5 + ResourceManager.get_value("horde_threat") + ResourceManager.get_value("noise")
 	var upgrade_bonus := BuildingManager.get_upgrade_defence_bonus()
@@ -14,13 +41,20 @@ func get_preview() -> Dictionary:
 		"upgrade_bonus": upgrade_bonus
 	}
 
-func prepare_defences() -> Dictionary:
-	var repaired := ResourceManager.spend_resource("materials", 8)
-	if repaired:
-		ResourceManager.add_resource("security", 4)
-		ResourceManager.add_resource("noise", 2)
-		return {"ok": true, "message": "Barricades patched. Security +4, noise +2."}
-	return {"ok": false, "message": "Not enough materials to prepare defences."}
+func prepare_defences(tactic_id := "patch_barricades") -> Dictionary:
+	if not DEFENCE_TACTICS.has(tactic_id):
+		return {"ok": false, "message": "Unknown defence tactic."}
+	var tactic: Dictionary = DEFENCE_TACTICS[tactic_id]
+	var cost: Dictionary = tactic["cost"]
+	for key in cost.keys():
+		if ResourceManager.get_value(String(key)) < int(cost[key]):
+			return {"ok": false, "message": "Not enough %s for %s." % [String(key), tactic["name"]]}
+	for key in cost.keys():
+		ResourceManager.add_resource(String(key), -int(cost[key]))
+	ResourceManager.add_resource("security", int(tactic.get("security", 0)))
+	ResourceManager.add_resource("noise", int(tactic.get("noise", 0)))
+	ResourceManager.add_resource("horde_threat", int(tactic.get("horde_threat", 0)))
+	return {"ok": true, "message": tactic["message"], "tactic": tactic_id}
 
 func resolve_night() -> Dictionary:
 	var preview := get_preview()
