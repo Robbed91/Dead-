@@ -72,16 +72,16 @@ func _roll_loot(location: Dictionary) -> Dictionary:
 	var keys: Array = location["loot"]
 	if keys.has("random"):
 		keys = ["food", "water", "materials", "medicine", "ammo", "tools", "fuel"]
-	var remaining := clamp(float(location.get("remaining", 100)) / 100.0, 0.15, 1.0)
+	var remaining: float = clampf(float(location.get("remaining", 100)) / 100.0, 0.15, 1.0)
 	for key in keys:
-		var resource_key := "materials" if key == "vehicle_parts" else String(key)
+		var resource_key: String = "materials" if key == "vehicle_parts" else String(key)
 		loot[resource_key] = max(1, int(round(float(randi_range(4, 16)) * remaining)))
 	return loot
 
 func advance_day() -> Array:
 	var messages: Array = []
 	for location in locations:
-		var cooldown := max(0, int(location.get("cooldown", 0)) - 1)
+		var cooldown: int = maxi(0, int(location.get("cooldown", 0)) - 1)
 		location["cooldown"] = cooldown
 		if cooldown == 0 and int(location.get("remaining", 100)) < 100:
 			location["remaining"] = min(100, int(location.get("remaining", 100)) + 4)

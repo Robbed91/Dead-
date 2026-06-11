@@ -47,7 +47,7 @@ var event_log_box: VBoxContainer
 var estate_board: Control
 var survivors_box: VBoxContainer
 var command_title: Label
-var command_body: VBoxContainer
+var command_body: HBoxContainer
 var selected_building_label: Label
 var night_preview_label: Label
 var end_day_button: Button
@@ -328,10 +328,10 @@ func _draw_estate_map(map: Control) -> void:
 	for i in range(18):
 		var pos := Vector2(fmod(float(i * 73), size.x), fmod(float(i * 47 + 31), size.y))
 		map.draw_circle(pos, 2.0, Color(0.898, 0.608, 0.251, 0.45))
-	var threat_count := clamp(int(ResourceManager.get_value("horde_threat") / 6), 2, 13)
+	var threat_count: int = clampi(int(ResourceManager.get_value("horde_threat") / 6), 2, 13)
 	for i in range(threat_count):
-		var wave := sin(ambient_time * 1.4 + i)
-		var pos := Vector2(size.x * (0.05 + float(i) / max(1.0, float(threat_count)) * 0.9), size.y * 0.94 + wave * 4.0)
+		var wave: float = sin(ambient_time * 1.4 + i)
+		var pos: Vector2 = Vector2(size.x * (0.05 + float(i) / maxf(1.0, float(threat_count)) * 0.9), size.y * 0.94 + wave * 4.0)
 		map.draw_circle(pos, 5.0, RED.darkened(0.1))
 		map.draw_line(pos + Vector2(-3, 5), pos + Vector2(3, 5), RED.darkened(0.25), 2)
 	for building in BuildingManager.buildings:
@@ -345,10 +345,10 @@ func _draw_estate_map(map: Control) -> void:
 func _draw_building_detail(map: Control, building: Dictionary, rect: Rect2) -> void:
 	var roof := Rect2(rect.position + Vector2(0, 3), Vector2(rect.size.x, max(6.0, rect.size.y * 0.16)))
 	map.draw_rect(roof, Color("#050607").lightened(0.08), true)
-	var condition := clamp(float(building.get("condition", 0)) / 100.0, 0.0, 1.0)
-	var security := clamp(float(building.get("security", 0)) / 100.0, 0.0, 1.0)
-	var infestation := clamp(float(building.get("infestation", 0)) / 100.0, 0.0, 1.0)
-	var bar_w := max(18.0, rect.size.x - 10.0)
+	var condition: float = clampf(float(building.get("condition", 0)) / 100.0, 0.0, 1.0)
+	var security: float = clampf(float(building.get("security", 0)) / 100.0, 0.0, 1.0)
+	var infestation: float = clampf(float(building.get("infestation", 0)) / 100.0, 0.0, 1.0)
+	var bar_w: float = maxf(18.0, rect.size.x - 10.0)
 	_draw_map_bar(map, rect.position + Vector2(5, rect.size.y - 18), bar_w, condition, GREEN)
 	_draw_map_bar(map, rect.position + Vector2(5, rect.size.y - 12), bar_w, security, BLUE)
 	if infestation > 0.0:

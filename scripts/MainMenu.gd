@@ -105,15 +105,15 @@ func _build_menu() -> void:
 	right.alignment = BoxContainer.ALIGNMENT_END
 	root.add_child(right)
 
-	var signal := _panel(right)
-	signal.add_child(_label("STAY ALERT.", 18, TEXT))
-	signal.add_child(_label("STAY TOGETHER.", 18, TEXT))
-	signal.add_child(_label("STAY ALIVE.", 18, GREEN))
+	var signal_panel := _panel(right)
+	signal_panel.add_child(_label("STAY ALERT.", 18, TEXT))
+	signal_panel.add_child(_label("STAY TOGETHER.", 18, TEXT))
+	signal_panel.add_child(_label("STAY ALIVE.", 18, GREEN))
 	var summary := SaveManager.get_save_summary()
 	var save_text := "No local save found."
 	if not summary.is_empty():
 		save_text = "Continue: Day %d\nPopulation %d | Morale %d%% | Security %d%%" % [summary["day_number"], summary["population"], summary["morale"], summary["security"]]
-	signal.add_child(_label("Willowgate Industrial Estate\nUnit 7B lockdown active\n%s" % save_text, 12, MUTED))
+	signal_panel.add_child(_label("Willowgate Industrial Estate\nUnit 7B lockdown active\n%s" % save_text, 12, MUTED))
 	if continue_button != null:
 		continue_button.disabled = summary.is_empty()
 

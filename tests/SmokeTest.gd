@@ -52,7 +52,7 @@ func _run() -> void:
 	_assert_true(bool(tactic.get("ok", false)), "can prepare a named defence tactic")
 	_assert_true(ResourceManager.get_value("noise") < noise_before_tactic, "quiet watch reduces noise")
 
-	var billy := SurvivorManager.survivors[0]
+	var billy: Dictionary = SurvivorManager.survivors[0]
 	billy["health"] = 64
 	billy["infection_risk"] = 58
 	billy["status"] = "At Risk"
