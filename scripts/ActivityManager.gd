@@ -1,0 +1,138 @@
+extends Node
+
+signal activity_changed
+signal job_completed(survivor_id: int, task: String, message: String)
+
+const TASK_DURATIONS := {
+	"Rest": 10.0,
+	"Guard": 14.0,
+	"Build": 16.0,
+	"Repair": 15.0,
+	"Scavenge": 18.0,
+	"Medical": 14.0,
+	"Cook": 12.0,
+	"Scout": 16.0,
+}
+
+var active_jobs: Dictionary = {}
+var update_accumulator := 0.0
+
+func _process(delta: float) -> void:
+	if active_jobs.is_empty():
+		return
+	update_accumulator += delta
+	var completed: Array = []
+	for survivor_id in active_jobs.keys():
+		var job: Dictionary = active_jobs[survivor_id]
+		job["progress"] = float(job.get("progress", 0.0)) + delta
+		active_jobs[survivor_id] = job
+		if float(job["progress"]) >= float(job["duration"]):
+			completed.append(int(survivor_id))
+	for survivor_id in completed:
+		_complete_job(survivor_id)
+	if not completed.is_empty() or update_accumulator >= 0.5:
+		update_accumulator = 0.0
+		activity_changed.emit()
+
+func reset() -> void:
+	active_jobs = {}
+	for survivor in SurvivorManager.get_available_scavengers():
+		start_task(int(survivor["id"]), String(survivor.get("assigned_task", "Rest")))
+	activity_changed.emit()
+
+func start_task(survivor_id: int, task: String) -> void:
+	if not SurvivorManager.TASKS.has(task):
+		task = "Rest"
+	active_jobs[survivor_id] = {
+		"task": task,
+		"progress": 0.0,
+		"duration": float(TASK_DURATIONS.get(task, 12.0)),
+		"target": _target_for_task(task),
+	}
+	activity_changed.emit()
+
+func get_job(survivor_id: int) -> Dictionary:
+	return Dictionary(active_jobs.get(survivor_id, {}))
+
+func get_progress(survivor_id: int) -> float:
+	var job := get_job(survivor_id)
+	if job.is_empty():
+		return 0.0
+	return clamp(float(job.get("progress", 0.0)) / max(0.1, float(job.get("duration", 1.0))), 0.0, 1.0)
+
+func get_target(survivor_id: int) -> String:
+	var job := get_job(survivor_id)
+	return String(job.get("target", "Main Warehouse"))
+
+func to_dict() -> Dictionary:
+	return {"active_jobs": active_jobs.duplicate(true)}
+
+func from_dict(data: Dictionary) -> void:
+	active_jobs = {}
+	var loaded := Dictionary(data.get("active_jobs", {}))
+	for key in loaded.keys():
+		active_jobs[int(key)] = Dictionary(loaded[key]).duplicate(true)
+	for survivor in SurvivorManager.get_available_scavengers():
+		var id := int(survivor["id"])
+		if not active_jobs.has(id):
+			start_task(id, String(survivor.get("assigned_task", "Rest")))
+	activity_changed.emit()
+
+func _complete_job(survivor_id: int) -> void:
+	var job := get_job(survivor_id)
+	if job.is_empty():
+		return
+	var task := String(job.get("task", "Rest"))
+	var message := _apply_reward(survivor_id, task)
+	job["progress"] = 0.0
+	job["duration"] = float(TASK_DURATIONS.get(task, 12.0)) + randf_range(-2.0, 2.0)
+	active_jobs[survivor_id] = job
+	job_completed.emit(survivor_id, task, message)
+
+func _apply_reward(survivor_id: int, task: String) -> String:
+	var name := SurvivorManager.get_survivor_name(survivor_id)
+	match task:
+		"Rest":
+			SurvivorManager.heal_survivor(survivor_id, 4)
+			return "%s rested and recovered health." % name
+		"Guard":
+			ResourceManager.add_resource("security", 1)
+			ResourceManager.add_resource("horde_threat", -1)
+			return "%s patrolled the perimeter." % name
+		"Build":
+			ResourceManager.add_resource("materials", 1)
+			ResourceManager.add_resource("noise", 1)
+			return "%s fabricated useful fittings." % name
+		"Repair":
+			var building := BuildingManager.repair_lowest_condition(5)
+			return "%s repaired %s." % [name, building.get("name", "the base")]
+		"Scavenge":
+			ResourceManager.add_resource("materials", randi_range(1, 4))
+			ResourceManager.add_resource("noise", 1)
+			return "%s hauled in useful salvage." % name
+		"Medical":
+			SurvivorManager.treat_worst_survivor(5, 2)
+			return "%s treated injuries and infection risk." % name
+		"Cook":
+			ResourceManager.add_resource("food", 1)
+			ResourceManager.add_resource("morale", 1)
+			return "%s stretched rations for the colony." % name
+		"Scout":
+			ResourceManager.add_resource("horde_threat", -2)
+			ResourceManager.add_resource("noise", 1)
+			return "%s mapped horde movement." % name
+	return "%s completed %s." % [name, task]
+
+func _target_for_task(task: String) -> String:
+	match task:
+		"Guard":
+			return "Security Office"
+		"Build", "Repair":
+			return "Signage Workshop"
+		"Scavenge", "Scout":
+			return "Garage"
+		"Medical":
+			return "Pharmacy"
+		"Cook":
+			return "Food Distribution Unit"
+	return "Main Warehouse"

@@ -11,6 +11,7 @@ func save_game(event_log: Array) -> bool:
 		"survivors": SurvivorManager.to_dict(),
 		"buildings": BuildingManager.to_dict(),
 		"scavenge": ScavengeManager.to_dict(),
+		"activity": ActivityManager.to_dict(),
 		"event_log": event_log
 	}
 	var file := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
@@ -32,6 +33,7 @@ func load_game() -> Dictionary:
 	SurvivorManager.from_dict(parsed.get("survivors", {}))
 	BuildingManager.from_dict(parsed.get("buildings", {}))
 	ScavengeManager.from_dict(parsed.get("scavenge", {}))
+	ActivityManager.from_dict(parsed.get("activity", {}))
 	return parsed
 
 func reset_save() -> void:

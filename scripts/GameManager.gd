@@ -10,12 +10,14 @@ var pending_recruit: Dictionary = {}
 
 func _ready() -> void:
 	randomize()
+	ActivityManager.job_completed.connect(_on_activity_job_completed)
 
 func new_game() -> void:
 	ResourceManager.reset()
 	SurvivorManager.reset()
 	BuildingManager.reset()
 	ScavengeManager.reset()
+	ActivityManager.reset()
 	event_log = []
 	pending_recruit = {}
 	add_log("Day 1: Dead Shift begins at the Main Warehouse.")
@@ -44,6 +46,7 @@ func add_log(message: String) -> void:
 
 func assign_survivor_task(id: int, task: String) -> void:
 	SurvivorManager.assign_task(id, task)
+	ActivityManager.start_task(id, task)
 	add_log("Task assigned: %s." % task)
 	state_changed.emit()
 
@@ -117,3 +120,7 @@ func end_day() -> Dictionary:
 func reset_save_and_game() -> void:
 	SaveManager.reset_save()
 	new_game()
+
+func _on_activity_job_completed(_survivor_id: int, _task: String, message: String) -> void:
+	add_log(message)
+	state_changed.emit()

@@ -135,6 +135,21 @@ func damage_random(amount: int) -> Dictionary:
 	_emit()
 	return building
 
+func repair_lowest_condition(amount: int) -> Dictionary:
+	var target := {}
+	for building in buildings:
+		if ["Lost", "Unknown"].has(String(building.get("status", ""))):
+			continue
+		if target.is_empty() or int(building.get("condition", 100)) < int(target.get("condition", 100)):
+			target = building
+	if target.is_empty():
+		return {}
+	target["condition"] = min(100, int(target.get("condition", 0)) + amount)
+	if String(target.get("status", "")) == "Cleared":
+		target["status"] = "Claimed"
+	_emit()
+	return target
+
 func _find_building(id: int) -> Dictionary:
 	for building in buildings:
 		if int(building["id"]) == id:

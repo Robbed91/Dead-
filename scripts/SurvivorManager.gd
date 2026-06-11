@@ -36,6 +36,30 @@ func assign_building(id: int, building_name: String) -> bool:
 			return true
 	return false
 
+func heal_survivor(id: int, amount: int) -> bool:
+	for survivor in survivors:
+		if int(survivor["id"]) == id and survivor.get("status", "Healthy") != "Dead":
+			survivor["health"] = min(100, int(survivor.get("health", 100)) + amount)
+			if int(survivor["health"]) >= 85 and int(survivor.get("infection_risk", 0)) < 40:
+				survivor["status"] = "Healthy"
+			survivors_changed.emit()
+			return true
+	return false
+
+func treat_worst_survivor(heal_amount: int, infection_reduction: int) -> Dictionary:
+	var target := {}
+	for survivor in get_available_scavengers():
+		if target.is_empty() or int(survivor.get("health", 100)) < int(target.get("health", 100)) or int(survivor.get("infection_risk", 0)) > int(target.get("infection_risk", 0)):
+			target = survivor
+	if target.is_empty():
+		return {}
+	target["health"] = min(100, int(target.get("health", 100)) + heal_amount)
+	target["infection_risk"] = max(0, int(target.get("infection_risk", 0)) - infection_reduction)
+	if int(target["health"]) >= 85 and int(target["infection_risk"]) < 40:
+		target["status"] = "Healthy"
+	survivors_changed.emit()
+	return target
+
 func get_survivor_name(id: int) -> String:
 	for survivor in survivors:
 		if int(survivor["id"]) == id:

@@ -35,6 +35,7 @@ var selected_building_survivor: Dictionary = {}
 var tab_buttons: Dictionary = {}
 var building_buttons: Dictionary = {}
 var survivor_tokens: Dictionary = {}
+var zombie_tokens: Array = []
 
 var resource_row: HBoxContainer
 var colony_strip: HBoxContainer
@@ -323,6 +324,8 @@ func _connect_signals() -> void:
 	ResourceManager.resources_changed.connect(_refresh)
 	SurvivorManager.survivors_changed.connect(_refresh)
 	BuildingManager.buildings_changed.connect(_refresh)
+	ActivityManager.activity_changed.connect(_refresh_activity)
+	NightDefenseManager.night_resolved.connect(_show_night_wave)
 	GameManager.recruit_found.connect(_show_recruit_popup)
 
 func _switch_tab(tab: String) -> void:
@@ -411,6 +414,12 @@ func _refresh_survivors() -> void:
 		row.add_child(details)
 		details.add_child(_label("%s  %s%%" % [survivor["name"], survivor["morale"]], 12, TEXT))
 		details.add_child(_label("%s - %s" % [survivor["role"], survivor["assigned_task"]], 9, MUTED))
+		var progress := ProgressBar.new()
+		progress.custom_minimum_size = Vector2(0, 8)
+		progress.max_value = 1.0
+		progress.value = ActivityManager.get_progress(int(survivor["id"]))
+		progress.show_percentage = false
+		details.add_child(progress)
 		var task := _small_button("Assign")
 		task.custom_minimum_size = Vector2(58, 34)
 		task.pressed.connect(_show_task_popup.bind(int(survivor["id"])))
@@ -431,6 +440,45 @@ func _refresh_estate() -> void:
 	_position_building_buttons(map)
 	_position_survivor_tokens(map)
 	map.queue_redraw()
+
+func _refresh_activity() -> void:
+	if resource_row == null:
+		return
+	_refresh_log()
+	_refresh_survivors()
+	_refresh_estate()
+
+func _show_night_wave(result: Dictionary) -> void:
+	if estate_board == null:
+		return
+	var map := estate_board.get_child(0) as Control
+	if map == null:
+		return
+	var count := 10 if bool(result.get("success", false)) else 18
+	for i in range(count):
+		var token := ColorRect.new()
+		token.color = RED if not bool(result.get("success", false)) else ORANGE
+		token.custom_minimum_size = Vector2(10, 10)
+		token.size = Vector2(10, 10)
+		var side := i % 4
+		var start := Vector2.ZERO
+		match side:
+			0:
+				start = Vector2(randf_range(0, map.size.x), -12)
+			1:
+				start = Vector2(map.size.x + 12, randf_range(0, map.size.y))
+			2:
+				start = Vector2(randf_range(0, map.size.x), map.size.y + 12)
+			3:
+				start = Vector2(-12, randf_range(0, map.size.y))
+		token.position = start
+		map.add_child(token)
+		zombie_tokens.append(token)
+		var target := map.size * Vector2(randf_range(0.38, 0.62), randf_range(0.38, 0.62))
+		var tween := create_tween()
+		tween.tween_property(token, "position", target, randf_range(0.7, 1.2))
+		tween.tween_property(token, "modulate:a", 0.0, 0.45)
+		tween.tween_callback(token.queue_free)
 
 func _position_survivor_tokens(map: Control) -> void:
 	for survivor in SurvivorManager.survivors:
@@ -469,6 +517,11 @@ func _survivor_destination(map: Control, survivor: Dictionary, id: int) -> Vecto
 	return rect.position + rect.size * 0.5 + offset
 
 func _building_for_survivor(survivor: Dictionary) -> Dictionary:
+	var activity_target := ActivityManager.get_target(int(survivor["id"]))
+	if activity_target != "":
+		for building in BuildingManager.buildings:
+			if String(building["name"]) == activity_target:
+				return building
 	var assigned_building := String(survivor.get("assigned_building", ""))
 	for building in BuildingManager.buildings:
 		if String(building["name"]) == assigned_building:

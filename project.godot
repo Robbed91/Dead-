@@ -28,6 +28,7 @@ BuildingManager="*res://scripts/BuildingManager.gd"
 ScavengeManager="*res://scripts/ScavengeManager.gd"
 NightDefenseManager="*res://scripts/NightDefenseManager.gd"
 SaveManager="*res://scripts/SaveManager.gd"
+ActivityManager="*res://scripts/ActivityManager.gd"
 
 [display]
 
