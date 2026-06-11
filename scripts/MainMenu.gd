@@ -11,6 +11,7 @@ const MENU_BACKGROUND := preload("res://assets/backgrounds/main_menu.png")
 
 var continue_button: Button
 var backdrop_layer: Control
+var modal_overlay: Control
 var menu_time := 0.0
 
 func _ready() -> void:
@@ -209,8 +210,29 @@ func _quit() -> void:
 	get_tree().quit()
 
 func _show_message(message: String) -> void:
-	var dialog := AcceptDialog.new()
-	dialog.title = "Dead Shift"
-	dialog.dialog_text = message
-	add_child(dialog)
-	dialog.popup_centered()
+	_dismiss_modal()
+	modal_overlay = ColorRect.new()
+	modal_overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
+	modal_overlay.color = Color(0, 0, 0, 0.72)
+	add_child(modal_overlay)
+	modal_overlay.move_to_front()
+	var center := CenterContainer.new()
+	center.set_anchors_preset(Control.PRESET_FULL_RECT)
+	center.offset_left = 24
+	center.offset_top = 24
+	center.offset_right = -24
+	center.offset_bottom = -24
+	modal_overlay.add_child(center)
+	var panel := _panel(center)
+	panel.add_child(_label("DEAD SHIFT", 22, ORANGE))
+	var body := _label(message, 16, TEXT)
+	body.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	panel.add_child(body)
+	var ok := _add_button(panel, "OK", _dismiss_modal, GREEN)
+	ok.custom_minimum_size = Vector2(0, 46)
+
+func _dismiss_modal() -> void:
+	if modal_overlay != null and is_instance_valid(modal_overlay):
+		modal_overlay.queue_free()
+	modal_overlay = null

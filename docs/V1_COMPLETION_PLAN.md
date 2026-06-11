@@ -16,14 +16,27 @@ This is the practical definition of a complete testable V1, separate from a comm
 - Keep Android landscape UI usable with fixed in-game menus and no native popups that resize the screen.
 - Save/load the full campaign state.
 
-## Still Needed After This Pass
+## Implemented In Current V1 Pass
 
-- Replace remaining generated-background reliance with a more consistent art set: building interiors, location cards, survivor portraits, threat/event images, and better iconography.
-- Add more late-game events so City growth does not feel repetitive.
-- Add balancing passes for food, water, ammo, medicine, injury, infection, noise, and horde pressure.
-- Add a first-run tutorial overlay.
-- Add sound effects and optional music.
-- Add Android device QA on at least one phone resolution and one tablet-like wide resolution.
+- Building unlock rules now use population and survivor skills.
+- Scavenging has early, mid, and late-game locations with facility requirements.
+- Radio contact can find recruitable survivors.
+- Campaign victory exists: reach City, control all estate buildings, and survive to Day 30.
+- End-of-day events include trader, alarm, repair, sickness, radio, kitchen, weather, and resource moments.
+- Larger colonies now consume more support resources and suffer overcrowding if beds are short.
+- Crafting, radio, assignment, and building-management controls are disabled or hidden when unavailable.
+- First-run tutorial overlay explains the core loop and can be reopened from the in-game menu.
+- Settings/reset/credits and game prompts use in-game modals instead of native popups.
+- Scavenge cards, survivor portraits, building markers, role marks, resource chips, horde tokens, and location icons use a consistent procedural art style.
+- Save/load and APK export pass automated local checks.
+
+## Still Requires Physical QA
+
+- Install and play the APK on the Samsung S24 Ultra.
+- Confirm no Android system navigation or camera cutout hides bottom controls.
+- Confirm long sessions feel balanced from Day 1 to Day 30.
+- Confirm generated background art looks acceptable on the phone screen.
+- Confirm audio behavior once sound effects/music are added.
 - Add a release keystore path for Play Store AAB builds. The current setup is debug APK focused.
 
 ## Not In V1

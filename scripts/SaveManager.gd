@@ -4,7 +4,8 @@ const SAVE_PATH := "user://dead_shift_save.json"
 const SETTINGS_PATH := "user://dead_shift_settings.json"
 
 var settings := {
-	"sound_enabled": true
+	"sound_enabled": true,
+	"tutorial_seen": false
 }
 
 func has_save() -> bool:
@@ -94,3 +95,10 @@ func save_settings(updated: Dictionary) -> bool:
 func is_sound_enabled() -> bool:
 	load_settings()
 	return bool(settings.get("sound_enabled", true))
+
+func has_seen_tutorial() -> bool:
+	load_settings()
+	return bool(settings.get("tutorial_seen", false))
+
+func mark_tutorial_seen() -> bool:
+	return save_settings({"tutorial_seen": true})

@@ -57,20 +57,28 @@ func apply_daily_consumption(population: int) -> Dictionary:
 	var food_needed := population * 2
 	var water_needed := population * 2
 	var shortage := 0
+	var bed_shortage := max(0, population - get_value("beds"))
 	if get_value("food") < food_needed:
 		shortage += food_needed - get_value("food")
 	if get_value("water") < water_needed:
 		shortage += water_needed - get_value("water")
 	add_resource("food", -food_needed)
 	add_resource("water", -water_needed)
+	if population >= 8:
+		add_resource("fuel", -1)
+	if population >= 15:
+		add_resource("power", -1)
 	add_resource("noise", -5)
-	add_resource("horde_threat", 3)
+	add_resource("horde_threat", 2 + int(floor(float(population) / 8.0)))
 	if shortage > 0:
 		add_resource("morale", -shortage * 2)
 		add_resource("infection_risk", 1)
 	else:
 		add_resource("morale", 1)
-	return {"food_needed": food_needed, "water_needed": water_needed, "shortage": shortage}
+	if bed_shortage > 0:
+		add_resource("morale", -bed_shortage)
+		add_resource("infection_risk", 1)
+	return {"food_needed": food_needed, "water_needed": water_needed, "shortage": shortage, "bed_shortage": bed_shortage}
 
 func advance_day() -> void:
 	add_resource("day_number", 1)

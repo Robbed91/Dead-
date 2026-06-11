@@ -228,6 +228,10 @@ func end_day() -> Dictionary:
 	else:
 		add_log("Rations issued: %d food, %d water." % [consumption["food_needed"], consumption["water_needed"]])
 		report.append("Rations issued: %d food, %d water." % [consumption["food_needed"], consumption["water_needed"]])
+	if int(consumption.get("bed_shortage", 0)) > 0:
+		var bed_message := "Overcrowding hurt morale: %d survivor(s) have no bed." % int(consumption["bed_shortage"])
+		add_log(bed_message)
+		report.append(bed_message)
 	ResourceManager.advance_day()
 	phase = "Morning"
 	_update_colony_tier(true)
@@ -349,9 +353,10 @@ func _check_failure_state() -> void:
 		game_over.emit(game_over_message)
 
 func _resolve_colony_event() -> String:
-	if randi_range(1, 100) > 38:
+	var event_chance := 35 + mini(25, SurvivorManager.get_population_count())
+	if randi_range(1, 100) > event_chance:
 		return ""
-	var roll := randi_range(1, 6)
+	var roll := randi_range(1, 14)
 	match roll:
 		1:
 			var found := randi_range(4, 12)
@@ -382,4 +387,41 @@ func _resolve_colony_event() -> String:
 				ResourceManager.add_resource("medicine", -2)
 				ResourceManager.add_resource("infection_risk", -3)
 				return "Jess organised a quick clinic. Medicine used, infection risk reduced."
+		7:
+			if ResourceManager.get_value("food") >= 8:
+				ResourceManager.add_resource("food", -8)
+				ResourceManager.add_resource("ammo", 4)
+				ResourceManager.add_resource("morale", 1)
+				return "A trader at the fence swapped cartridges for food. Ammo +4."
+		8:
+			ResourceManager.add_resource("tools", 1)
+			ResourceManager.add_resource("materials", 6)
+			return "A locked van was opened behind the units. Tools +1, materials +6."
+		9:
+			ResourceManager.add_resource("noise", 8)
+			ResourceManager.add_resource("horde_threat", 5)
+			return "A distant alarm echoed through the estate. Noise and horde threat rose."
+		10:
+			var repaired := BuildingManager.repair_lowest_condition(randi_range(4, 9))
+			if not repaired.is_empty():
+				return "A repair crew patched %s during downtime." % repaired.get("name", "a building")
+		11:
+			if BuildingManager.count_by_use("Radio Room") > 0:
+				ResourceManager.add_resource("horde_threat", -4)
+				return "Radio chatter warned of horde movement. Threat reduced."
+		12:
+			if BuildingManager.count_by_use("Food Prep") > 0:
+				ResourceManager.add_resource("food", randi_range(4, 9))
+				ResourceManager.add_resource("morale", 1)
+				return "The kitchen turned scraps into a proper meal. Food and morale improved."
+		13:
+			if SurvivorManager.get_population_count() >= 6:
+				var target := SurvivorManager.injure_random(randi_range(4, 10), 0)
+				if not target.is_empty():
+					return "%s was hurt moving supplies in the dark." % target.get("name", "Someone")
+		14:
+			if ResourceManager.get_value("power") > 0:
+				ResourceManager.add_resource("power", -2)
+				ResourceManager.add_resource("security", 2)
+				return "Floodlights ran longer than planned. Power -2, security +2."
 	return ""

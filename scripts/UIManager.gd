@@ -78,6 +78,8 @@ func _ready() -> void:
 	_build_layout()
 	_connect_signals()
 	_refresh()
+	if not SaveManager.has_seen_tutorial():
+		call_deferred("_show_tutorial")
 
 func _process(delta: float) -> void:
 	ambient_time += delta
@@ -909,7 +911,7 @@ func _build_scavenge_commands() -> void:
 	for location in ScavengeManager.locations:
 		var loot_text := ", ".join(Array(location.get("loot", [])))
 		var state := _location_state_text(location)
-		var button := _small_button("%s\n%s | %s | %s" % [location["name"], String(location["danger"]).to_upper(), state, loot_text])
+		var button := _location_button(location, "%s\n%s | %s | %s" % [location["name"], String(location["danger"]).to_upper(), state, loot_text])
 		button.custom_minimum_size = Vector2(162, 54)
 		button.disabled = not bool(ScavengeManager.can_scavenge(String(location["name"])).get("ok", false))
 		button.pressed.connect(_on_scavenge.bind(String(location["name"])))
@@ -918,10 +920,12 @@ func _build_scavenge_commands() -> void:
 func _build_crafting_commands() -> void:
 	var ammo := _small_button("CRAFT AMMO\n-12 mat +6")
 	ammo.custom_minimum_size = Vector2(130, 54)
+	ammo.disabled = ResourceManager.get_value("materials") < 12
 	ammo.pressed.connect(func(): _craft("materials", 12, "ammo", 6))
 	command_body.add_child(ammo)
 	var med := _small_button("MED KITS\n-8 mat +3")
 	med.custom_minimum_size = Vector2(130, 54)
+	med.disabled = ResourceManager.get_value("materials") < 8
 	med.pressed.connect(func(): _craft("materials", 8, "medicine", 3))
 	command_body.add_child(med)
 	var building := _selected_building()
@@ -953,12 +957,17 @@ func _build_defence_commands() -> void:
 func _build_radio_commands() -> void:
 	var radio := _small_button("CALL RADIO\n-2 power")
 	radio.custom_minimum_size = Vector2(130, 54)
+	radio.disabled = ResourceManager.get_value("power") < 2
 	radio.pressed.connect(func():
 		var result := GameManager.call_radio_contact()
 		if not bool(result.get("recruit_found", false)):
 			_show_result(String(result["message"]))
 	)
 	command_body.add_child(radio)
+	var tutorial := _small_button("HOW TO PLAY")
+	tutorial.custom_minimum_size = Vector2(120, 54)
+	tutorial.pressed.connect(_show_tutorial)
+	command_body.add_child(tutorial)
 	var save := _small_button("SAVE")
 	save.custom_minimum_size = Vector2(90, 54)
 	save.pressed.connect(func(): _show_result("Saved." if GameManager.manual_save() else "Save failed."))
@@ -1127,7 +1136,7 @@ func _show_scavenge_popup() -> void:
 	for location in ScavengeManager.locations:
 		var location_name := String(location["name"])
 		var loot_text := ", ".join(Array(location.get("loot", [])))
-		var button := _small_button("%s\nDanger %s  |  Supplies %s  |  %s" % [location_name, String(location["danger"]).to_upper(), loot_text, _location_state_text(location)])
+		var button := _location_button(location, "%s\nDanger %s  |  Supplies %s  |  %s" % [location_name, String(location["danger"]).to_upper(), loot_text, _location_state_text(location)])
 		button.custom_minimum_size = Vector2(0, 58)
 		button.add_theme_font_size_override("font_size", 14)
 		button.disabled = not bool(ScavengeManager.can_scavenge(location_name).get("ok", false))
@@ -1150,7 +1159,7 @@ func _show_scavenge_popup() -> void:
 	actions.add_child(close)
 
 func _show_game_menu() -> void:
-	var box := _show_modal("Game Menu", Vector2(430, 520))
+	var box := _show_modal("Game Menu", Vector2(430, 585))
 	var title := _label("Dead Shift", 18, ORANGE, HORIZONTAL_ALIGNMENT_CENTER)
 	box.add_child(title)
 
@@ -1194,6 +1203,14 @@ func _show_game_menu() -> void:
 	)
 	box.add_child(settings)
 
+	var tutorial := _small_button("HOW TO PLAY")
+	tutorial.custom_minimum_size = Vector2(0, 48)
+	tutorial.pressed.connect(func():
+		_dismiss_modal()
+		_show_tutorial()
+	)
+	box.add_child(tutorial)
+
 	var main_menu := _small_button("SAVE AND MAIN MENU")
 	main_menu.custom_minimum_size = Vector2(0, 48)
 	main_menu.pressed.connect(func():
@@ -1216,6 +1233,36 @@ func _show_game_menu() -> void:
 	close.custom_minimum_size = Vector2(0, 46)
 	close.pressed.connect(_dismiss_modal)
 	box.add_child(close)
+
+func _show_tutorial() -> void:
+	var box := _show_modal("How To Survive", Vector2(620, 500))
+	var guide := _label(
+		"1. Billy starts alone in the workshop. Use Scout Locations to find supplies and survivors.\n\n" +
+		"2. Invite survivors to grow from Hideout to Camp, then Community, Settlement, District, and City.\n\n" +
+		"3. Buildings unlock when you have enough people and the right skills. Scout, clear, then claim them before assigning use or survivors.\n\n" +
+		"4. Crew survivors take direct orders. NPC residents choose useful colony work automatically.\n\n" +
+		"5. Keep food, water, beds, morale, medicine, ammo, and security healthy. Noise and horde threat make nights worse.\n\n" +
+		"6. Use Build, Scout, Defend, Radio, Save, and Settings from the MENU button. Win by reaching City, controlling the estate, and surviving to Day 30.",
+		16,
+		TEXT
+	)
+	guide.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	guide.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	box.add_child(guide)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 8)
+	box.add_child(row)
+	var ok := _small_button("START")
+	ok.custom_minimum_size = Vector2(0, 46)
+	ok.pressed.connect(func():
+		SaveManager.mark_tutorial_seen()
+		_dismiss_modal()
+	)
+	row.add_child(ok)
+	var later := _small_button("SHOW AGAIN LATER")
+	later.custom_minimum_size = Vector2(0, 46)
+	later.pressed.connect(_dismiss_modal)
+	row.add_child(later)
 
 func _show_modal(title_text: String, panel_size: Vector2) -> VBoxContainer:
 	_dismiss_modal()
@@ -1626,6 +1673,39 @@ func _stat_chip(title: String, value: String, color: Color) -> PanelContainer:
 	chip.add_child(_label(value, 16, color, HORIZONTAL_ALIGNMENT_CENTER))
 	var panel: PanelContainer = framed["panel"]
 	return panel
+
+func _location_button(location: Dictionary, text: String) -> Button:
+	var button := _small_button("      " + text)
+	button.draw.connect(func(): _draw_location_card_icon(button, location))
+	return button
+
+func _draw_location_card_icon(button: Button, location: Dictionary) -> void:
+	var rect := Rect2(Vector2(8, 10), Vector2(34, maxf(24.0, button.size.y - 20.0)))
+	var danger := String(location.get("danger", "low"))
+	var color := GREEN
+	if danger == "medium":
+		color = YELLOW
+	elif danger == "high":
+		color = RED
+	button.draw_rect(rect, Color(0.02, 0.024, 0.027, 0.75), true)
+	button.draw_rect(rect, color, false, 2)
+	var loot := Array(location.get("loot", []))
+	var center := rect.position + rect.size * 0.5
+	if loot.has("medicine"):
+		button.draw_line(center + Vector2(-7, 0), center + Vector2(7, 0), GREEN.lightened(0.25), 3)
+		button.draw_line(center + Vector2(0, -7), center + Vector2(0, 7), GREEN.lightened(0.25), 3)
+	elif loot.has("food") or loot.has("water"):
+		button.draw_circle(center + Vector2(-4, 1), 6, BLUE.lightened(0.15))
+		button.draw_rect(Rect2(center + Vector2(3, -6), Vector2(8, 12)), YELLOW, true)
+	elif loot.has("ammo"):
+		for i in range(3):
+			button.draw_rect(Rect2(center + Vector2(-9 + i * 7, -8), Vector2(4, 16)), ORANGE, true)
+	elif loot.has("fuel"):
+		button.draw_rect(Rect2(center + Vector2(-7, -9), Vector2(14, 18)), ORANGE, false, 2)
+		button.draw_line(center + Vector2(4, -8), center + Vector2(9, -13), ORANGE, 2)
+	else:
+		button.draw_line(center + Vector2(-9, 8), center + Vector2(8, -9), TEXT, 3)
+		button.draw_circle(center + Vector2(9, -10), 3, TEXT)
 
 func _small_button(text: String) -> Button:
 	var button := Button.new()

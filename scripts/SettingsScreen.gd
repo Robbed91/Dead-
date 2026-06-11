@@ -10,6 +10,7 @@ const MUTED := Color("#91a0a6")
 
 var sound_toggle: CheckButton
 var save_summary: Label
+var modal_overlay: Control
 
 func _ready() -> void:
 	_build_theme()
@@ -92,7 +93,7 @@ func _build_layout() -> void:
 	var actions := _panel(right, Vector2(0, 0))
 	actions.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	actions.add_child(_label("PROJECT", 18, ORANGE))
-	_add_button(actions, "CREDITS", func(): _message("Dead Shift v0.1 Prototype\nBuilt with Godot 4, generated placeholder art, and original prototype systems."), MUTED)
+	_add_button(actions, "CREDITS", func(): _message("Dead Shift v1 Test Build\nBuilt with Godot 4, procedural UI art, generated estate backgrounds, and original colony systems."), MUTED)
 	_add_button(actions, "BACK", func(): get_tree().change_scene_to_file("res://scenes/MainMenu.tscn"), GREEN)
 
 func _refresh() -> void:
@@ -108,35 +109,72 @@ func _on_sound_toggled(enabled: bool) -> void:
 	SaveManager.save_settings({"sound_enabled": enabled})
 
 func _confirm_reset() -> void:
-	var dialog := ConfirmationDialog.new()
-	dialog.title = "Reset Save"
-	dialog.dialog_text = "Delete the local Dead Shift save on this device?"
-	add_child(dialog)
-	dialog.confirmed.connect(func():
+	var box := _modal("Reset Save", Vector2(430, 220))
+	var text := _label("Delete the local Dead Shift save on this device?", 16, TEXT)
+	text.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	box.add_child(text)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 8)
+	box.add_child(row)
+	var reset := _button("RESET", RED)
+	reset.pressed.connect(func():
 		GameManager.reset_save_and_game()
 		_refresh()
-		dialog.queue_free()
+		_dismiss_modal()
 		_message("Save reset.")
 	)
-	dialog.canceled.connect(dialog.queue_free)
-	dialog.popup_centered(Vector2(430, 220))
+	row.add_child(reset)
+	var cancel := _button("CANCEL", GREEN)
+	cancel.pressed.connect(_dismiss_modal)
+	row.add_child(cancel)
 
 func _message(text: String) -> void:
-	var dialog := AcceptDialog.new()
-	dialog.title = "Dead Shift"
-	dialog.dialog_text = text
-	add_child(dialog)
-	dialog.confirmed.connect(dialog.queue_free)
-	dialog.popup_centered(Vector2(460, 240))
+	var box := _modal("Dead Shift", Vector2(460, 240))
+	var body := _label(text, 16, TEXT)
+	body.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	box.add_child(body)
+	var ok := _button("OK", GREEN)
+	ok.pressed.connect(_dismiss_modal)
+	box.add_child(ok)
 
 func _add_button(parent: VBoxContainer, text: String, callback: Callable, color: Color) -> void:
+	var button := _button(text, color)
+	button.pressed.connect(callback)
+	parent.add_child(button)
+
+func _button(text: String, color: Color) -> Button:
 	var button := Button.new()
 	button.text = text
 	button.custom_minimum_size = Vector2(0, 56)
 	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	button.add_theme_color_override("font_color", color.lightened(0.12))
-	button.pressed.connect(callback)
-	parent.add_child(button)
+	return button
+
+func _modal(title_text: String, panel_size: Vector2) -> VBoxContainer:
+	_dismiss_modal()
+	modal_overlay = ColorRect.new()
+	modal_overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
+	modal_overlay.color = Color(0, 0, 0, 0.72)
+	add_child(modal_overlay)
+	modal_overlay.move_to_front()
+	var center := CenterContainer.new()
+	center.set_anchors_preset(Control.PRESET_FULL_RECT)
+	center.offset_left = 24
+	center.offset_top = 24
+	center.offset_right = -24
+	center.offset_bottom = -24
+	modal_overlay.add_child(center)
+	var panel_box := _panel(center, panel_size)
+	panel_box.add_child(_label(title_text, 22, ORANGE))
+	return panel_box
+
+func _dismiss_modal() -> void:
+	if modal_overlay != null and is_instance_valid(modal_overlay):
+		modal_overlay.queue_free()
+	modal_overlay = null
 
 func _panel(parent: Container, min_size: Vector2) -> VBoxContainer:
 	var panel := PanelContainer.new()
