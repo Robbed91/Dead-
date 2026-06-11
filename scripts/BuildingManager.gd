@@ -4,6 +4,48 @@ signal buildings_changed
 
 const StartingBuildings = preload("res://data/starting_buildings.gd")
 const USES := ["Storage", "Sleeping Quarters", "Workshop", "Medical Bay", "Radio Room", "Quarantine", "Watch Post", "Food Prep", "Vehicle Bay", "Training Room"]
+const UPGRADES := {
+	"barricade_kit": {
+		"name": "Barricade Kit",
+		"cost": {"materials": 20, "tools": 1},
+		"security": 10,
+		"condition": 5,
+		"defence_bonus": 8,
+		"description": "Permanent building security and night defence."
+	},
+	"floodlights": {
+		"name": "Floodlights",
+		"cost": {"materials": 16, "tools": 2, "fuel": 2},
+		"security": 6,
+		"condition": 0,
+		"defence_bonus": 6,
+		"description": "Improves guard visibility and lowers horde pressure."
+	},
+	"rain_catchers": {
+		"name": "Rain Catchers",
+		"cost": {"materials": 14, "tools": 1},
+		"security": 0,
+		"condition": 0,
+		"defence_bonus": 0,
+		"description": "Generates water at end of day."
+	},
+	"workshop_bench": {
+		"name": "Workshop Bench",
+		"cost": {"materials": 18, "tools": 2},
+		"security": 0,
+		"condition": 5,
+		"defence_bonus": 0,
+		"description": "Improves material production when staffed."
+	},
+	"spike_traps": {
+		"name": "Spike Traps",
+		"cost": {"materials": 24, "tools": 2, "ammo": 2},
+		"security": 4,
+		"condition": 0,
+		"defence_bonus": 12,
+		"description": "Strong night defence bonus."
+	}
+}
 
 var buildings: Array = []
 
@@ -21,6 +63,15 @@ func get_fortified_bonus() -> int:
 			bonus += 15
 		elif building.get("status", "") == "Operational":
 			bonus += int(int(building.get("security", 0)) / 5)
+	return bonus
+
+func get_upgrade_defence_bonus() -> int:
+	var bonus := 0
+	for building in buildings:
+		if not ["Claimed", "Operational", "Fortified"].has(String(building.get("status", ""))):
+			continue
+		for upgrade_id in Array(building.get("upgrades", [])):
+			bonus += int(UPGRADES.get(String(upgrade_id), {}).get("defence_bonus", 0))
 	return bonus
 
 func apply_use_bonuses() -> Array:
@@ -47,6 +98,20 @@ func apply_use_bonuses() -> Array:
 				ResourceManager.add_resource("horde_threat", -1)
 			"Quarantine":
 				ResourceManager.add_resource("infection_risk", -1)
+		for upgrade_id in Array(building.get("upgrades", [])):
+			match String(upgrade_id):
+				"rain_catchers":
+					ResourceManager.add_resource("water", 3)
+					messages.append("%s rain catchers collected +3 water." % building["name"])
+				"workshop_bench":
+					if String(building.get("current_use", "")) == "Workshop":
+						ResourceManager.add_resource("materials", 3)
+						messages.append("%s workshop bench produced +3 materials." % building["name"])
+				"floodlights":
+					if ResourceManager.get_value("power") > 0:
+						ResourceManager.add_resource("power", -1)
+						ResourceManager.add_resource("horde_threat", -1)
+						messages.append("%s floodlights kept the perimeter visible." % building["name"])
 	return messages
 
 func assign_use(id: int, use_name: String) -> Dictionary:
@@ -123,6 +188,35 @@ func perform_action(id: int, action: String) -> Dictionary:
 				_emit()
 				return {"ok": true, "message": "%s fortified." % building["name"]}
 	return {"ok": false, "message": "%s cannot be used on %s right now." % [action, building["name"]]}
+
+func install_upgrade(id: int, upgrade_id: String) -> Dictionary:
+	var building := _find_building(id)
+	if building.is_empty():
+		return {"ok": false, "message": "Building not found."}
+	if not UPGRADES.has(upgrade_id):
+		return {"ok": false, "message": "Unknown upgrade."}
+	if not ["Claimed", "Operational", "Fortified"].has(String(building.get("status", ""))):
+		return {"ok": false, "message": "%s must be claimed before installing upgrades." % building["name"]}
+	var upgrades := Array(building.get("upgrades", []))
+	if upgrades.has(upgrade_id):
+		return {"ok": false, "message": "%s already has %s." % [building["name"], UPGRADES[upgrade_id]["name"]]}
+	var cost: Dictionary = UPGRADES[upgrade_id]["cost"]
+	for key in cost.keys():
+		if ResourceManager.get_value(String(key)) < int(cost[key]):
+			return {"ok": false, "message": "Not enough %s for %s." % [String(key), UPGRADES[upgrade_id]["name"]]}
+	for key in cost.keys():
+		ResourceManager.add_resource(String(key), -int(cost[key]))
+	building["security"] = min(100, int(building.get("security", 0)) + int(UPGRADES[upgrade_id].get("security", 0)))
+	building["condition"] = min(100, int(building.get("condition", 0)) + int(UPGRADES[upgrade_id].get("condition", 0)))
+	upgrades.append(upgrade_id)
+	building["upgrades"] = upgrades
+	if building["status"] == "Claimed":
+		building["status"] = "Operational"
+	_emit()
+	return {"ok": true, "message": "%s installed at %s." % [UPGRADES[upgrade_id]["name"], building["name"]]}
+
+func get_upgrade_name(upgrade_id: String) -> String:
+	return String(UPGRADES.get(upgrade_id, {}).get("name", upgrade_id))
 
 func damage_random(amount: int) -> Dictionary:
 	var targets := buildings.filter(func(b): return ["Operational", "Fortified", "Claimed"].has(b.get("status", "")))

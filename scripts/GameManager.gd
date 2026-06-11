@@ -94,6 +94,16 @@ func assign_survivor_to_building(building_id: int, survivor_id: int) -> Dictiona
 	state_changed.emit()
 	return result
 
+func install_building_upgrade(building_id: int, upgrade_id: String) -> Dictionary:
+	if is_game_over():
+		return {"ok": false, "message": game_over_message}
+	var result := BuildingManager.install_upgrade(building_id, upgrade_id)
+	add_log(result["message"])
+	phase = "Building"
+	_update_objective()
+	state_changed.emit()
+	return result
+
 func scavenge(location_name: String, survivor_id: int) -> Dictionary:
 	if is_game_over():
 		return {"ok": false, "message": game_over_message}

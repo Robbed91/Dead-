@@ -622,7 +622,12 @@ func _refresh_selected_building() -> void:
 	if building.is_empty():
 		selected_building_label.text = "Select a building."
 		return
-	selected_building_label.text = "%s\n%s | %s\nCond %d  Sec %d  Inf %d" % [building["name"], building["status"], building["current_use"], building["condition"], building["security"], building["infestation"]]
+	var upgrades := Array(building.get("upgrades", []))
+	var upgrade_names: Array = []
+	for upgrade_id in upgrades:
+		upgrade_names.append(BuildingManager.get_upgrade_name(String(upgrade_id)))
+	var upgrade_text := "None" if upgrade_names.is_empty() else ", ".join(upgrade_names)
+	selected_building_label.text = "%s\n%s | %s\nCond %d  Sec %d  Inf %d\nUpgrades: %s" % [building["name"], building["status"], building["current_use"], building["condition"], building["security"], building["infestation"], upgrade_text]
 
 func _refresh_night_preview() -> void:
 	if night_preview_label == null:
@@ -631,7 +636,7 @@ func _refresh_night_preview() -> void:
 	var attack := int(preview["attack_strength"])
 	var defence := int(preview["defence_strength"])
 	var state := "HOLDING" if defence >= attack else "AT RISK"
-	night_preview_label.text = "Attack %d  Defence %d\nGuards %d  Fort bonus %d\n%s" % [attack, defence, int(preview["guards"]), int(preview["fortified_bonus"]), state]
+	night_preview_label.text = "Attack %d  Defence %d\nGuards %d  Fort %d  Upgrades %d\n%s" % [attack, defence, int(preview["guards"]), int(preview["fortified_bonus"]), int(preview.get("upgrade_bonus", 0)), state]
 
 func _refresh_commands() -> void:
 	for tab in TABS:
@@ -730,6 +735,19 @@ func _build_crafting_commands() -> void:
 	med.custom_minimum_size = Vector2(130, 54)
 	med.pressed.connect(func(): _craft("materials", 8, "medicine", 3))
 	command_body.add_child(med)
+	var building := _selected_building()
+	if building.is_empty():
+		command_body.add_child(_label("Select a building before installing upgrades.", 13, MUTED))
+		return
+	for upgrade_id in BuildingManager.UPGRADES.keys():
+		var upgrade: Dictionary = BuildingManager.UPGRADES[upgrade_id]
+		var cost := _cost_text(Dictionary(upgrade["cost"]))
+		var button := _small_button("%s\n%s" % [upgrade["name"], cost])
+		button.custom_minimum_size = Vector2(156, 54)
+		button.disabled = not _can_install_upgrade(building, String(upgrade_id))
+		button.tooltip_text = String(upgrade["description"])
+		button.pressed.connect(_on_install_upgrade.bind(int(building["id"]), String(upgrade_id)))
+		command_body.add_child(button)
 
 func _build_map_commands() -> void:
 	for location in ScavengeManager.locations:
@@ -788,6 +806,9 @@ func _craft(cost_key: String, cost: int, gain_key: String, gain: int) -> void:
 	else:
 		_show_result("Not enough %s." % cost_key)
 	_refresh()
+
+func _on_install_upgrade(building_id: int, upgrade_id: String) -> void:
+	_show_result(GameManager.install_building_upgrade(building_id, upgrade_id)["message"])
 
 func _show_task_popup(survivor_id: int) -> void:
 	var dialog := AcceptDialog.new()
@@ -858,6 +879,25 @@ func _can_building_action(building: Dictionary, action: String) -> bool:
 		"Fortify":
 			return ["Claimed", "Operational"].has(String(building.get("status", ""))) and ResourceManager.get_value("materials") >= 15
 	return false
+
+func _can_install_upgrade(building: Dictionary, upgrade_id: String) -> bool:
+	if not BuildingManager.UPGRADES.has(upgrade_id):
+		return false
+	if not ["Claimed", "Operational", "Fortified"].has(String(building.get("status", ""))):
+		return false
+	if Array(building.get("upgrades", [])).has(upgrade_id):
+		return false
+	var cost: Dictionary = BuildingManager.UPGRADES[upgrade_id]["cost"]
+	for key in cost.keys():
+		if ResourceManager.get_value(String(key)) < int(cost[key]):
+			return false
+	return true
+
+func _cost_text(cost: Dictionary) -> String:
+	var parts: Array = []
+	for key in cost.keys():
+		parts.append("%s %s" % [cost[key], String(key).substr(0, 3)])
+	return "-%s" % ", ".join(parts)
 
 func _building_color(building: Dictionary) -> Color:
 	match String(building.get("status", "")):

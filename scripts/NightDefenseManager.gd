@@ -4,12 +4,14 @@ signal night_resolved(result: Dictionary)
 
 func get_preview() -> Dictionary:
 	var attack_strength := ResourceManager.get_value("day_number") * 5 + ResourceManager.get_value("horde_threat") + ResourceManager.get_value("noise")
-	var defence_strength := ResourceManager.get_value("security") + SurvivorManager.get_guard_count() * 10 + BuildingManager.get_fortified_bonus()
+	var upgrade_bonus := BuildingManager.get_upgrade_defence_bonus()
+	var defence_strength := ResourceManager.get_value("security") + SurvivorManager.get_guard_count() * 10 + BuildingManager.get_fortified_bonus() + upgrade_bonus
 	return {
 		"attack_strength": attack_strength,
 		"defence_strength": defence_strength,
 		"guards": SurvivorManager.get_guard_count(),
-		"fortified_bonus": BuildingManager.get_fortified_bonus()
+		"fortified_bonus": BuildingManager.get_fortified_bonus(),
+		"upgrade_bonus": upgrade_bonus
 	}
 
 func prepare_defences() -> Dictionary:

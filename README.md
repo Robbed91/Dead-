@@ -12,6 +12,8 @@ Dead Shift is a Godot 4 mobile Android prototype for a 2D zombie survival colony
 - Assign survivors to claimed buildings.
 - Assign building uses such as Workshop, Watch Post, Medical Bay, Storage, Sleeping Quarters, Quarantine, and Food Prep.
 - Scout, clear, claim, repair, or fortify buildings.
+- Install persistent building upgrades: Barricade Kit, Floodlights, Rain Catchers, Workshop Bench, and Spike Traps.
+- Upgrades affect night defence, daily water/material production, horde pressure, security, and building condition.
 - Pick a survivor and scavenge locations for food, water, medicine, fuel, tools, materials, and ammo.
 - Scavenging now runs as a timed survivor job before loot and danger resolve.
 - Potentially find recruitable survivors and invite, reject, or quarantine them.
@@ -171,6 +173,7 @@ On desktop test runs, the exact folder is platform-specific and can be inspected
 - Scavenging has timed survivor expeditions, but no multi-person expedition planning yet.
 - Building assignment and building-use bonuses are intentionally simple.
 - Crafting is a small prototype tab, not a full production chain.
+- Facility upgrades are functional, but do not yet have unique artwork per building.
 - Survivor movement is token-based rather than full sprite pathfinding.
 - No final audio, final character portraits, or final environment art yet.
 - Android export still requires local Godot export templates, SDK, JDK, and signing configuration.
