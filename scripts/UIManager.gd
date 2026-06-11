@@ -11,6 +11,7 @@ const RED := Color("#c23b33")
 const GREEN := Color("#70b86b")
 const TEXT := Color("#e8e0d2")
 
+var ui_scale := 1.0
 var resource_bar: Label
 var status_bar: Label
 var objective_label: Label
@@ -24,14 +25,24 @@ var selected_building_survivor: Dictionary = {}
 
 func _ready() -> void:
 	active_tab = initial_tab if TAB_NAMES.has(initial_tab) else "Colony"
+	_calculate_mobile_scale()
 	_build_theme()
 	_build_layout()
 	_connect_signals()
 	_refresh()
 
+func _calculate_mobile_scale() -> void:
+	var width := get_viewport_rect().size.x
+	if width <= 0:
+		width = 390
+	ui_scale = clamp(width / 430.0, 0.78, 1.0)
+
+func _scaled(value: float) -> int:
+	return int(round(value * ui_scale))
+
 func _build_theme() -> void:
 	var theme := Theme.new()
-	theme.default_font_size = 18
+	theme.default_font_size = _scaled(14)
 	var button_style := StyleBoxFlat.new()
 	button_style.bg_color = PANEL_LIGHT
 	button_style.corner_radius_top_left = 6
@@ -59,62 +70,74 @@ func _build_layout() -> void:
 
 	var root := VBoxContainer.new()
 	root.set_anchors_preset(Control.PRESET_FULL_RECT)
-	root.add_theme_constant_override("separation", 8)
-	root.offset_left = 10
-	root.offset_top = 10
-	root.offset_right = -10
-	root.offset_bottom = -10
+	root.add_theme_constant_override("separation", _scaled(4))
+	root.offset_left = _scaled(6)
+	root.offset_top = _scaled(4)
+	root.offset_right = -_scaled(6)
+	root.offset_bottom = -_scaled(4)
 	add_child(root)
 
 	var title := Label.new()
 	title.text = "DEAD SHIFT"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.add_theme_font_size_override("font_size", 28)
+	title.add_theme_font_size_override("font_size", _scaled(18))
 	title.add_theme_color_override("font_color", ORANGE)
 	root.add_child(title)
 
 	resource_bar = Label.new()
 	resource_bar.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	resource_bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	resource_bar.add_theme_font_size_override("font_size", _scaled(12))
 	root.add_child(resource_bar)
 
 	status_bar = Label.new()
 	status_bar.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	status_bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	status_bar.add_theme_font_size_override("font_size", _scaled(12))
 	root.add_child(status_bar)
 
 	objective_label = Label.new()
 	objective_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	objective_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	objective_label.add_theme_font_size_override("font_size", _scaled(12))
 	root.add_child(objective_label)
 
 	var scroll := ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	root.add_child(scroll)
 
 	content = VBoxContainer.new()
 	content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	content.add_theme_constant_override("separation", 8)
+	content.add_theme_constant_override("separation", _scaled(6))
 	scroll.add_child(content)
 
 	var log_title := Label.new()
 	log_title.text = "Event Log"
+	log_title.add_theme_font_size_override("font_size", _scaled(12))
 	log_title.add_theme_color_override("font_color", ORANGE)
 	root.add_child(log_title)
 
 	var log_scroll := ScrollContainer.new()
-	log_scroll.custom_minimum_size = Vector2(0, 118)
+	log_scroll.custom_minimum_size = Vector2(0, _scaled(62))
+	log_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	root.add_child(log_scroll)
 
 	log_box = VBoxContainer.new()
 	log_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	log_scroll.add_child(log_box)
 
-	var nav := HBoxContainer.new()
-	nav.add_theme_constant_override("separation", 4)
+	var nav := GridContainer.new()
+	nav.columns = 3
+	nav.add_theme_constant_override("h_separation", _scaled(4))
+	nav.add_theme_constant_override("v_separation", _scaled(4))
 	root.add_child(nav)
 	for tab in TAB_NAMES:
 		var button := Button.new()
-		button.text = tab
-		button.custom_minimum_size = Vector2(0, 52)
+		button.text = "Scav" if tab == "Scavenge" else tab
+		button.custom_minimum_size = Vector2(0, _scaled(36))
 		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		button.add_theme_font_size_override("font_size", _scaled(12))
 		button.pressed.connect(_switch_tab.bind(tab))
 		nav.add_child(button)
 		tab_buttons[tab] = button
@@ -135,8 +158,8 @@ func _refresh() -> void:
 	if resource_bar == null:
 		return
 	var r := ResourceManager.resources
-	resource_bar.text = "Food %d  Water %d  Fuel %d  Power %d\nMat %d  Med %d  Ammo %d  Tools %d" % [r["food"], r["water"], r["fuel"], r["power"], r["materials"], r["medicine"], r["ammo"], r["tools"]]
-	status_bar.text = "Day %d  Pop %d/%d  Morale %d  Security %d  Noise %d  Infection %d%%" % [r["day_number"], SurvivorManager.get_available_scavengers().size(), r["beds"], r["morale"], r["security"], r["noise"], r["infection_risk"]]
+	resource_bar.text = "Food %d  Water %d  Mat %d  Med %d\nAmmo %d  Fuel %d  Power %d  Tools %d" % [r["food"], r["water"], r["materials"], r["medicine"], r["ammo"], r["fuel"], r["power"], r["tools"]]
+	status_bar.text = "Day %d  Pop %d/%d  Mor %d  Sec %d  Noise %d  Inf %d%%" % [r["day_number"], SurvivorManager.get_available_scavengers().size(), r["beds"], r["morale"], r["security"], r["noise"], r["infection_risk"]]
 	objective_label.text = GameManager.current_objective
 	for child in content.get_children():
 		child.queue_free()
@@ -166,7 +189,8 @@ func _refresh_log() -> void:
 		var label := Label.new()
 		label.text = entry
 		label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		label.add_theme_font_size_override("font_size", 14)
+		label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		label.add_theme_font_size_override("font_size", _scaled(10))
 		log_box.add_child(label)
 
 func _build_colony() -> void:
@@ -176,12 +200,14 @@ func _build_colony() -> void:
 	summary.add_child(_body(_task_summary()))
 	var end_day := Button.new()
 	end_day.text = "Resolve Night / End Day"
-	end_day.custom_minimum_size = Vector2(0, 58)
+	end_day.custom_minimum_size = Vector2(0, _scaled(44))
+	end_day.add_theme_font_size_override("font_size", _scaled(13))
 	end_day.pressed.connect(func(): _show_result(GameManager.end_day()["message"]))
 	content.add_child(end_day)
 	var save := Button.new()
 	save.text = "Manual Save"
-	save.custom_minimum_size = Vector2(0, 52)
+	save.custom_minimum_size = Vector2(0, _scaled(42))
+	save.add_theme_font_size_override("font_size", _scaled(13))
 	save.pressed.connect(func(): _show_result("Saved." if GameManager.manual_save() else "Save failed."))
 	content.add_child(save)
 
@@ -195,8 +221,9 @@ func _build_buildings() -> void:
 		for action in ["Scout", "Clear", "Claim", "Repair", "Fortify"]:
 			var button := Button.new()
 			button.text = action
-			button.custom_minimum_size = Vector2(0, 48)
+			button.custom_minimum_size = Vector2(0, _scaled(38))
 			button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			button.add_theme_font_size_override("font_size", _scaled(11))
 			button.pressed.connect(_on_building_action.bind(int(building["id"]), action))
 			row.add_child(button)
 		card.add_child(row)
@@ -205,7 +232,8 @@ func _build_buildings() -> void:
 		controls.add_theme_constant_override("h_separation", 6)
 		controls.add_theme_constant_override("v_separation", 6)
 		var use_select := OptionButton.new()
-		use_select.custom_minimum_size = Vector2(0, 48)
+		use_select.custom_minimum_size = Vector2(0, _scaled(38))
+		use_select.add_theme_font_size_override("font_size", _scaled(11))
 		for use_name in BuildingManager.USES:
 			use_select.add_item(use_name)
 			if String(building.get("current_use", "")) == use_name:
@@ -217,7 +245,8 @@ func _build_buildings() -> void:
 		controls.add_child(use_select)
 		var use_button := Button.new()
 		use_button.text = "Set Use"
-		use_button.custom_minimum_size = Vector2(0, 48)
+		use_button.custom_minimum_size = Vector2(0, _scaled(38))
+		use_button.add_theme_font_size_override("font_size", _scaled(11))
 		use_button.pressed.connect(_on_assign_building_use.bind(building_id))
 		controls.add_child(use_button)
 		var survivor_select := _survivor_selector(building_id)
@@ -225,7 +254,8 @@ func _build_buildings() -> void:
 		controls.add_child(survivor_select)
 		var survivor_button := Button.new()
 		survivor_button.text = "Assign"
-		survivor_button.custom_minimum_size = Vector2(0, 48)
+		survivor_button.custom_minimum_size = Vector2(0, _scaled(38))
+		survivor_button.add_theme_font_size_override("font_size", _scaled(11))
 		survivor_button.pressed.connect(_on_assign_survivor_to_building.bind(building_id))
 		controls.add_child(survivor_button)
 		card.add_child(controls)
@@ -236,11 +266,12 @@ func _build_survivors() -> void:
 		card.add_child(_heading("%s - %s" % [survivor["name"], survivor["role"]]))
 		card.add_child(_body("Health: %d  Morale: %d  Loyalty: %d\nInfection: %d%%  Task: %s\nTraits: %s" % [survivor["health"], survivor["morale"], survivor["loyalty"], survivor["infection_risk"], survivor["assigned_task"], ", ".join(survivor["traits"])]))
 		var task_grid := GridContainer.new()
-		task_grid.columns = 4
+		task_grid.columns = 3
 		for task in SurvivorManager.TASKS:
 			var button := Button.new()
 			button.text = task
-			button.custom_minimum_size = Vector2(0, 44)
+			button.custom_minimum_size = Vector2(0, _scaled(38))
+			button.add_theme_font_size_override("font_size", _scaled(11))
 			button.pressed.connect(GameManager.assign_survivor_task.bind(int(survivor["id"]), task))
 			task_grid.add_child(button)
 		card.add_child(task_grid)
@@ -256,7 +287,8 @@ func _build_scavenge() -> void:
 	selector_card.add_child(_heading("Scavenging Team"))
 	selector_card.add_child(_body("Choose who goes outside the estate. Injuries and infection risk can hit anyone, but the assigned scavenger changes task automatically."))
 	var selector := OptionButton.new()
-	selector.custom_minimum_size = Vector2(0, 52)
+	selector.custom_minimum_size = Vector2(0, _scaled(42))
+	selector.add_theme_font_size_override("font_size", _scaled(12))
 	for survivor in survivors:
 		selector.add_item("%s - %s" % [survivor["name"], survivor["role"]], int(survivor["id"]))
 		if int(survivor["id"]) == selected_scavenger_id:
@@ -269,7 +301,8 @@ func _build_scavenge() -> void:
 		card.add_child(_body("Danger: %s  Alarm: %s\nLoot: %s\nPossible survivors: %s" % [location["danger"], location["alarm_risk"], ", ".join(location["loot"]), "Yes" if location["possible_survivors"] else "No"]))
 		var button := Button.new()
 		button.text = "Start Scavenge"
-		button.custom_minimum_size = Vector2(0, 54)
+		button.custom_minimum_size = Vector2(0, _scaled(42))
+		button.add_theme_font_size_override("font_size", _scaled(13))
 		button.pressed.connect(_on_scavenge.bind(String(location["name"])))
 		card.add_child(button)
 
@@ -277,12 +310,14 @@ func _build_crafting() -> void:
 	_add_section("Crafting Prototype", "Use materials to make emergency supplies while the workshop system is expanded.")
 	var ammo := Button.new()
 	ammo.text = "Craft Ammo (-12 materials, +6 ammo)"
-	ammo.custom_minimum_size = Vector2(0, 54)
+	ammo.custom_minimum_size = Vector2(0, _scaled(42))
+	ammo.add_theme_font_size_override("font_size", _scaled(12))
 	ammo.pressed.connect(func(): _craft("materials", 12, "ammo", 6))
 	content.add_child(ammo)
 	var med := Button.new()
 	med.text = "Pack Med Kits (-8 materials, +3 medicine)"
-	med.custom_minimum_size = Vector2(0, 54)
+	med.custom_minimum_size = Vector2(0, _scaled(42))
+	med.add_theme_font_size_override("font_size", _scaled(12))
 	med.pressed.connect(func(): _craft("materials", 8, "medicine", 3))
 	content.add_child(med)
 
@@ -291,12 +326,14 @@ func _build_defence() -> void:
 	_add_section("Night Defence", "Threat: %d\nDefence: %d\nGuards: %d\nFortified bonus: %d" % [preview["attack_strength"], preview["defence_strength"], preview["guards"], preview["fortified_bonus"]])
 	var prep := Button.new()
 	prep.text = "Prepare Defences"
-	prep.custom_minimum_size = Vector2(0, 56)
+	prep.custom_minimum_size = Vector2(0, _scaled(42))
+	prep.add_theme_font_size_override("font_size", _scaled(13))
 	prep.pressed.connect(func(): _show_result(GameManager.prepare_defences()["message"]))
 	content.add_child(prep)
 	var night := Button.new()
 	night.text = "Resolve Night / End Day"
-	night.custom_minimum_size = Vector2(0, 56)
+	night.custom_minimum_size = Vector2(0, _scaled(42))
+	night.add_theme_font_size_override("font_size", _scaled(13))
 	night.pressed.connect(func(): _show_result(GameManager.end_day()["message"]))
 	content.add_child(night)
 
@@ -366,6 +403,7 @@ func _add_section(title: String, body: String) -> void:
 
 func _card() -> VBoxContainer:
 	var card := PanelContainer.new()
+	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var style := StyleBoxFlat.new()
 	style.bg_color = PANEL
 	style.border_color = Color("#3e4852")
@@ -379,12 +417,13 @@ func _card() -> VBoxContainer:
 	style.corner_radius_bottom_right = 6
 	card.add_theme_stylebox_override("panel", style)
 	var margin := MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 10)
-	margin.add_theme_constant_override("margin_right", 10)
-	margin.add_theme_constant_override("margin_top", 10)
-	margin.add_theme_constant_override("margin_bottom", 10)
+	margin.add_theme_constant_override("margin_left", _scaled(8))
+	margin.add_theme_constant_override("margin_right", _scaled(8))
+	margin.add_theme_constant_override("margin_top", _scaled(7))
+	margin.add_theme_constant_override("margin_bottom", _scaled(7))
 	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 8)
+	box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	box.add_theme_constant_override("separation", _scaled(5))
 	margin.add_child(box)
 	card.add_child(margin)
 	content.add_child(card)
@@ -394,7 +433,8 @@ func _heading(text: String) -> Label:
 	var label := Label.new()
 	label.text = text
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	label.add_theme_font_size_override("font_size", 20)
+	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	label.add_theme_font_size_override("font_size", _scaled(15))
 	label.add_theme_color_override("font_color", ORANGE)
 	return label
 
@@ -402,12 +442,14 @@ func _body(text: String) -> Label:
 	var label := Label.new()
 	label.text = text
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	label.add_theme_font_size_override("font_size", 16)
+	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	label.add_theme_font_size_override("font_size", _scaled(12))
 	return label
 
 func _survivor_selector(building_id: int) -> OptionButton:
 	var selector := OptionButton.new()
-	selector.custom_minimum_size = Vector2(0, 48)
+	selector.custom_minimum_size = Vector2(0, _scaled(38))
+	selector.add_theme_font_size_override("font_size", _scaled(11))
 	var survivors := SurvivorManager.get_available_scavengers()
 	for survivor in survivors:
 		selector.add_item(String(survivor["name"]), int(survivor["id"]))
