@@ -840,6 +840,13 @@ func _build_building_commands() -> void:
 		button.disabled = not _can_building_action(building, action)
 		button.pressed.connect(_on_building_action.bind(int(building["id"]), action))
 		command_body.add_child(button)
+	var can_manage := _can_manage_building(building)
+	if not can_manage:
+		var locked := _label("Claim this building before assigning use or survivors.", 13, MUTED)
+		locked.custom_minimum_size = Vector2(210, 54)
+		locked.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		command_body.add_child(locked)
+		return
 	var use_select := OptionButton.new()
 	use_select.custom_minimum_size = Vector2(160, 54)
 	for use_name in BuildingManager.USES:
@@ -965,12 +972,20 @@ func _on_building_use_selected(index: int, selector: OptionButton, building_id: 
 	selected_building_use[building_id] = selector.get_item_text(index)
 
 func _on_assign_building_use(building_id: int) -> void:
+	var building := _selected_building()
+	if building.is_empty() or int(building.get("id", -1)) != building_id or not _can_manage_building(building):
+		_show_result("Claim this building before assigning a use.")
+		return
 	_show_result(GameManager.assign_building_use(building_id, String(selected_building_use.get(building_id, BuildingManager.USES[0])))["message"])
 
 func _on_building_survivor_selected(index: int, selector: OptionButton, building_id: int) -> void:
 	selected_building_survivor[building_id] = selector.get_item_id(index)
 
 func _on_assign_survivor_to_building(building_id: int) -> void:
+	var building := _selected_building()
+	if building.is_empty() or int(building.get("id", -1)) != building_id or not _can_manage_building(building):
+		_show_result("Claim this building before assigning survivors.")
+		return
 	var survivors := SurvivorManager.get_crew_survivors()
 	if survivors.is_empty():
 		_show_result("No crew survivors available.")
@@ -1382,10 +1397,13 @@ func _can_building_action(building: Dictionary, action: String) -> bool:
 			return ["Claimed", "Operational"].has(String(building.get("status", ""))) and ResourceManager.get_value("materials") >= 15
 	return false
 
+func _can_manage_building(building: Dictionary) -> bool:
+	return ["Claimed", "Operational", "Fortified"].has(String(building.get("status", "")))
+
 func _can_install_upgrade(building: Dictionary, upgrade_id: String) -> bool:
 	if not BuildingManager.UPGRADES.has(upgrade_id):
 		return false
-	if not ["Claimed", "Operational", "Fortified"].has(String(building.get("status", ""))):
+	if not _can_manage_building(building):
 		return false
 	if Array(building.get("upgrades", [])).has(upgrade_id):
 		return false
