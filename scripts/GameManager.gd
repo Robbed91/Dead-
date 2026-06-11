@@ -353,7 +353,7 @@ func _check_failure_state() -> void:
 		game_over.emit(game_over_message)
 
 func _resolve_colony_event() -> String:
-	var event_chance := 35 + mini(25, SurvivorManager.get_population_count())
+	var event_chance: int = 35 + mini(25, SurvivorManager.get_population_count())
 	if randi_range(1, 100) > event_chance:
 		return ""
 	var roll := randi_range(1, 14)

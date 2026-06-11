@@ -54,10 +54,10 @@ func spend_resource(key: String, amount: int) -> bool:
 	return true
 
 func apply_daily_consumption(population: int) -> Dictionary:
-	var food_needed := population * 2
-	var water_needed := population * 2
-	var shortage := 0
-	var bed_shortage := max(0, population - get_value("beds"))
+	var food_needed: int = population * 2
+	var water_needed: int = population * 2
+	var shortage: int = 0
+	var bed_shortage: int = maxi(0, population - get_value("beds"))
 	if get_value("food") < food_needed:
 		shortage += food_needed - get_value("food")
 	if get_value("water") < water_needed:
