@@ -73,11 +73,14 @@ var modal_overlay: Control
 var ambient_time := 0.0
 
 func _ready() -> void:
+	var fallback := get_node_or_null("FallbackBackground")
 	active_tab = initial_tab if TABS.has(initial_tab) else "Buildings"
 	_build_theme()
 	_build_layout()
 	_connect_signals()
 	_refresh()
+	if fallback != null:
+		fallback.queue_free()
 	if not SaveManager.has_seen_tutorial():
 		call_deferred("_show_tutorial")
 
