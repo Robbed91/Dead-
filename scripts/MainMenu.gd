@@ -7,6 +7,7 @@ const RED := Color("#b9382f")
 const GREEN := Color("#70b86b")
 const TEXT := Color("#e8e0d2")
 const MUTED := Color("#9aa4aa")
+const MENU_BACKGROUND := preload("res://assets/placeholders/menu_background.png")
 
 func _ready() -> void:
 	_build_theme()
@@ -37,6 +38,13 @@ func _build_theme() -> void:
 	set_theme(theme)
 
 func _build_menu() -> void:
+	var image := TextureRect.new()
+	image.texture = MENU_BACKGROUND
+	image.set_anchors_preset(Control.PRESET_FULL_RECT)
+	image.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	image.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	add_child(image)
+
 	var backdrop := Control.new()
 	backdrop.set_anchors_preset(Control.PRESET_FULL_RECT)
 	backdrop.draw.connect(_draw_backdrop.bind(backdrop))
@@ -103,8 +111,8 @@ func _build_menu() -> void:
 
 func _draw_backdrop(node: Control) -> void:
 	var size := node.size
-	node.draw_rect(Rect2(Vector2.ZERO, size), BG, true)
-	node.draw_rect(Rect2(Vector2(0, size.y * 0.62), Vector2(size.x, size.y * 0.38)), Color("#11151a"), true)
+	node.draw_rect(Rect2(Vector2.ZERO, size), Color(0.0, 0.0, 0.0, 0.28), true)
+	node.draw_rect(Rect2(Vector2(0, size.y * 0.62), Vector2(size.x, size.y * 0.38)), Color(0.067, 0.082, 0.102, 0.42), true)
 	for i in range(9):
 		var x := size.x * (float(i) / 8.0)
 		node.draw_rect(Rect2(Vector2(x - 18, size.y * 0.28 + sin(i) * 18), Vector2(80, size.y * 0.35)), Color("#151b21"), true)
