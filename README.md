@@ -17,6 +17,7 @@ Dead Shift is a Godot 4 mobile Android prototype for a 2D zombie survival colony
 - Upgrades affect night defence, daily water/material production, horde pressure, security, and building condition.
 - Pick a survivor and scavenge locations for food, water, medicine, fuel, tools, materials, and ammo.
 - Scavenging now runs as a timed survivor job before loot and danger resolve.
+- Scavenging locations deplete as they are looted, can become temporarily too hot to enter, and recover slightly over time.
 - Potentially find recruitable survivors and invite, reject, or quarantine them.
 - Daily survivor jobs and building uses apply small resource, security, morale, infection, and horde-threat effects.
 - Random end-of-day events can add storage finds, generator problems, ration disputes, rain collection, horde movement, or clinic treatment.
@@ -85,7 +86,7 @@ A headless smoke test checks the core loop managers without manual clicking:
 Godot_v4.6.3-stable_win64.exe --headless --path . -s tests/SmokeTest.gd
 ```
 
-It starts a new game, claims a building, installs an upgrade, starts and completes a scavenge job, checks survivor condition progression, previews night defence, saves, reloads, and ends the day. The test backs up and restores any existing `user://dead_shift_save.json`.
+It starts a new game, claims a building, installs an upgrade, starts and completes a scavenge job, checks location depletion/recovery, checks survivor condition progression, previews night defence, saves, reloads, and ends the day. The test backs up and restores any existing `user://dead_shift_save.json`.
 
 ## Android Landscape Orientation
 

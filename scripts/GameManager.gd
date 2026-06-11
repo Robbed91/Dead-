@@ -109,6 +109,9 @@ func scavenge(location_name: String, survivor_id: int) -> Dictionary:
 		return {"ok": false, "message": game_over_message}
 	if ActivityManager.get_job(survivor_id).get("task", "") == "Scavenge" and ActivityManager.get_job(survivor_id).get("location", "") != "":
 		return {"ok": false, "message": "%s is already outside scavenging." % SurvivorManager.get_survivor_name(survivor_id)}
+	var availability := ScavengeManager.can_scavenge(location_name)
+	if not bool(availability.get("ok", false)):
+		return availability
 	ActivityManager.start_scavenge(survivor_id, location_name)
 	var result := {"ok": true, "message": "%s left to scavenge %s." % [SurvivorManager.get_survivor_name(survivor_id), location_name]}
 	add_log(result["message"])
@@ -159,6 +162,8 @@ func end_day() -> Dictionary:
 	var colony_event := _resolve_colony_event()
 	if colony_event != "":
 		add_log(colony_event)
+	for message in ScavengeManager.advance_day():
+		add_log(message)
 	var consumption := ResourceManager.apply_daily_consumption(SurvivorManager.get_available_scavengers().size())
 	if int(consumption["shortage"]) > 0:
 		add_log("Food or water shortage hurt morale.")

@@ -721,8 +721,10 @@ func _build_scavenge_commands() -> void:
 	command_body.add_child(selector)
 	for location in ScavengeManager.locations:
 		var loot_text := ", ".join(Array(location.get("loot", [])))
-		var button := _small_button("%s\n%s | %s" % [location["name"], String(location["danger"]).to_upper(), loot_text])
+		var state := _location_state_text(location)
+		var button := _small_button("%s\n%s | %s | %s" % [location["name"], String(location["danger"]).to_upper(), state, loot_text])
 		button.custom_minimum_size = Vector2(162, 54)
+		button.disabled = not bool(ScavengeManager.can_scavenge(String(location["name"])).get("ok", false))
 		button.pressed.connect(_on_scavenge.bind(String(location["name"])))
 		command_body.add_child(button)
 
@@ -752,8 +754,9 @@ func _build_crafting_commands() -> void:
 func _build_map_commands() -> void:
 	for location in ScavengeManager.locations:
 		var danger := String(location["danger"]).to_upper()
-		var button := _small_button("%s\n%s" % [location["name"], danger])
+		var button := _small_button("%s\n%s | %s" % [location["name"], danger, _location_state_text(location)])
 		button.custom_minimum_size = Vector2(130, 54)
+		button.disabled = not bool(ScavengeManager.can_scavenge(String(location["name"])).get("ok", false))
 		button.pressed.connect(_switch_tab.bind("Scavenge"))
 		command_body.add_child(button)
 
@@ -898,6 +901,15 @@ func _cost_text(cost: Dictionary) -> String:
 	for key in cost.keys():
 		parts.append("%s %s" % [cost[key], String(key).substr(0, 3)])
 	return "-%s" % ", ".join(parts)
+
+func _location_state_text(location: Dictionary) -> String:
+	var remaining := int(location.get("remaining", 100))
+	var cooldown := int(location.get("cooldown", 0))
+	if cooldown > 0:
+		return "HOT %dd" % cooldown
+	if remaining <= 0:
+		return "EMPTY"
+	return "%d%%" % remaining
 
 func _building_color(building: Dictionary) -> Color:
 	match String(building.get("status", "")):

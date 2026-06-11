@@ -36,6 +36,10 @@ func _run() -> void:
 	_assert_eq(ActivityManager.get_job(2).get("location", ""), "Tool Hire Depot", "scavenging job stores target location")
 	ActivityManager.call("_complete_job", 2)
 	_assert_eq(String(SurvivorManager.survivors[1].get("assigned_task", "")), "Rest", "scavenger returns to rest after completing expedition")
+	var depot := _location("Tool Hire Depot")
+	_assert_true(int(depot.get("remaining", 100)) < 100, "scavenging depletes location supplies")
+	_assert_true(depot.has("cooldown"), "scavenge location tracks cooldown")
+	var depot_remaining_after_scavenge := int(depot.get("remaining", 0))
 
 	var preview := NightDefenseManager.get_preview()
 	_assert_true(int(preview.get("attack_strength", 0)) > 0, "night attack preview calculates attack")
@@ -60,6 +64,7 @@ func _run() -> void:
 	var day_before := ResourceManager.get_value("day_number")
 	GameManager.end_day()
 	_assert_eq(ResourceManager.get_value("day_number"), day_before + 1, "end day advances the day")
+	_assert_true(int(_location("Tool Hire Depot").get("remaining", 0)) >= depot_remaining_after_scavenge, "locations recover or remain stable after day advances")
 
 	if failures.is_empty():
 		print("Dead Shift smoke test passed.")
@@ -98,3 +103,9 @@ func _restore_save() -> void:
 		var dir := DirAccess.open("user://")
 		if dir != null:
 			dir.remove("dead_shift_save.json")
+
+func _location(location_name: String) -> Dictionary:
+	for location in ScavengeManager.locations:
+		if String(location.get("name", "")) == location_name:
+			return location
+	return {}
