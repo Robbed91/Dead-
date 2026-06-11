@@ -150,6 +150,20 @@ func repair_lowest_condition(amount: int) -> Dictionary:
 	_emit()
 	return target
 
+func count_by_status(status: String) -> int:
+	var total := 0
+	for building in buildings:
+		if String(building.get("status", "")) == status:
+			total += 1
+	return total
+
+func count_survivable_buildings() -> int:
+	var total := 0
+	for building in buildings:
+		if ["Claimed", "Operational", "Fortified"].has(String(building.get("status", ""))):
+			total += 1
+	return total
+
 func _find_building(id: int) -> Dictionary:
 	for building in buildings:
 		if int(building["id"]) == id:

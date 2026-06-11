@@ -12,7 +12,9 @@ func save_game(event_log: Array) -> bool:
 		"buildings": BuildingManager.to_dict(),
 		"scavenge": ScavengeManager.to_dict(),
 		"activity": ActivityManager.to_dict(),
-		"event_log": event_log
+		"event_log": event_log,
+		"phase": GameManager.phase,
+		"game_over_message": GameManager.game_over_message
 	}
 	var file := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
 	if file == null:

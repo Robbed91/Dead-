@@ -12,11 +12,12 @@ func _ready() -> void:
 func reset() -> void:
 	locations = LocationData.get_data()
 
-func run_scavenge(location_name: String, survivor_id: int) -> Dictionary:
+func run_scavenge(location_name: String, survivor_id: int, assign_task := true) -> Dictionary:
 	var location := _find_location(location_name)
 	if location.is_empty():
 		return {"ok": false, "message": "Location not found."}
-	SurvivorManager.assign_task(survivor_id, "Scavenge")
+	if assign_task:
+		SurvivorManager.assign_task(survivor_id, "Scavenge")
 	var danger := _danger_value(location["danger"])
 	var alarm := _alarm_value(location["alarm_risk"])
 	var loot := _roll_loot(location)

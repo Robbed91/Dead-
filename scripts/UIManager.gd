@@ -39,6 +39,7 @@ var zombie_tokens: Array = []
 
 var resource_row: HBoxContainer
 var colony_strip: HBoxContainer
+var phase_label: Label
 var objective_body: Label
 var alerts_box: VBoxContainer
 var event_log_box: VBoxContainer
@@ -114,6 +115,8 @@ func _build_top_bar(root: VBoxContainer) -> void:
 	var day_panel := _add_panel(top, Vector2(90, 0))
 	day_panel.add_child(_label("DAY", 12, MUTED, HORIZONTAL_ALIGNMENT_CENTER))
 	day_panel.add_child(_label("1", 28, TEXT, HORIZONTAL_ALIGNMENT_CENTER, "day_value"))
+	phase_label = _label("MORNING", 9, ORANGE, HORIZONTAL_ALIGNMENT_CENTER)
+	day_panel.add_child(phase_label)
 
 	resource_row = HBoxContainer.new()
 	resource_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -229,10 +232,15 @@ func _build_command_bar(root: VBoxContainer) -> void:
 	commands.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	command_title = _label("BUILDINGS", 13, ORANGE)
 	commands.add_child(command_title)
+	var command_scroll := ScrollContainer.new()
+	command_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	command_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	command_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	commands.add_child(command_scroll)
 	command_body = HBoxContainer.new()
 	command_body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	command_body.add_theme_constant_override("separation", 5)
-	commands.add_child(command_body)
+	command_scroll.add_child(command_body)
 
 	var end := _add_panel(bottom, Vector2(220, 0))
 	end.add_child(_label("NEXT PHASE: NIGHT", 12, MUTED, HORIZONTAL_ALIGNMENT_CENTER))
@@ -327,6 +335,7 @@ func _connect_signals() -> void:
 	ActivityManager.activity_changed.connect(_refresh_activity)
 	NightDefenseManager.night_resolved.connect(_show_night_wave)
 	GameManager.recruit_found.connect(_show_recruit_popup)
+	GameManager.game_over.connect(_show_game_over)
 
 func _switch_tab(tab: String) -> void:
 	active_tab = tab
@@ -371,6 +380,8 @@ func _refresh_top_bar() -> void:
 	var day_label := find_child("day_value", true, false)
 	if day_label != null:
 		day_label.text = str(r["day_number"])
+	if phase_label != null:
+		phase_label.text = GameManager.phase.to_upper()
 
 func _refresh_alerts() -> void:
 	objective_body.text = GameManager.current_objective
@@ -558,8 +569,13 @@ func _refresh_selected_building() -> void:
 func _refresh_commands() -> void:
 	for tab in TABS:
 		tab_buttons[tab].modulate = ORANGE if tab == active_tab else Color.WHITE
+		tab_buttons[tab].disabled = GameManager.is_game_over()
+	end_day_button.disabled = GameManager.is_game_over()
 	_clear(command_body)
 	command_title.text = active_tab.to_upper()
+	if GameManager.is_game_over():
+		command_body.add_child(_label(GameManager.game_over_message, 14, RED))
+		return
 	match active_tab:
 		"Buildings":
 			_build_building_commands()
@@ -598,6 +614,20 @@ func _build_building_commands() -> void:
 	set_use.custom_minimum_size = Vector2(90, 54)
 	set_use.pressed.connect(_on_assign_building_use.bind(id))
 	command_body.add_child(set_use)
+	var survivor_select := OptionButton.new()
+	survivor_select.custom_minimum_size = Vector2(140, 54)
+	for survivor in SurvivorManager.get_available_scavengers():
+		survivor_select.add_item(String(survivor["name"]), int(survivor["id"]))
+		if int(survivor["id"]) == int(selected_building_survivor.get(id, -1)):
+			survivor_select.select(survivor_select.get_item_count() - 1)
+	if not SurvivorManager.get_available_scavengers().is_empty() and not selected_building_survivor.has(id):
+		selected_building_survivor[id] = int(SurvivorManager.get_available_scavengers()[0]["id"])
+	survivor_select.item_selected.connect(_on_building_survivor_selected.bind(survivor_select, id))
+	command_body.add_child(survivor_select)
+	var assign := _small_button("ASSIGN")
+	assign.custom_minimum_size = Vector2(90, 54)
+	assign.pressed.connect(_on_assign_survivor_to_building.bind(id))
+	command_body.add_child(assign)
 
 func _build_survivor_commands() -> void:
 	for survivor in SurvivorManager.survivors.slice(0, 5):
@@ -669,6 +699,17 @@ func _on_building_use_selected(index: int, selector: OptionButton, building_id: 
 func _on_assign_building_use(building_id: int) -> void:
 	_show_result(GameManager.assign_building_use(building_id, String(selected_building_use.get(building_id, BuildingManager.USES[0])))["message"])
 
+func _on_building_survivor_selected(index: int, selector: OptionButton, building_id: int) -> void:
+	selected_building_survivor[building_id] = selector.get_item_id(index)
+
+func _on_assign_survivor_to_building(building_id: int) -> void:
+	var survivors := SurvivorManager.get_available_scavengers()
+	if survivors.is_empty():
+		_show_result("No survivors available.")
+		return
+	var survivor_id := int(selected_building_survivor.get(building_id, int(survivors[0]["id"])))
+	_show_result(GameManager.assign_survivor_to_building(building_id, survivor_id)["message"])
+
 func _craft(cost_key: String, cost: int, gain_key: String, gain: int) -> void:
 	if ResourceManager.spend_resource(cost_key, cost):
 		ResourceManager.add_resource(gain_key, gain)
@@ -713,6 +754,15 @@ func _show_result(message: String) -> void:
 	add_child(dialog)
 	dialog.confirmed.connect(dialog.queue_free)
 	dialog.popup_centered(Vector2(420, 220))
+	_refresh()
+
+func _show_game_over(message: String) -> void:
+	var dialog := AcceptDialog.new()
+	dialog.title = "Colony Lost"
+	dialog.dialog_text = message
+	add_child(dialog)
+	dialog.confirmed.connect(dialog.queue_free)
+	dialog.popup_centered(Vector2(460, 240))
 	_refresh()
 
 func _selected_building() -> Dictionary:

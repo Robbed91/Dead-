@@ -51,6 +51,17 @@ func start_task(survivor_id: int, task: String) -> void:
 	}
 	activity_changed.emit()
 
+func start_scavenge(survivor_id: int, location_name: String) -> void:
+	active_jobs[survivor_id] = {
+		"task": "Scavenge",
+		"progress": 0.0,
+		"duration": float(TASK_DURATIONS.get("Scavenge", 18.0)) + randf_range(0.0, 6.0),
+		"target": "Garage",
+		"location": location_name,
+	}
+	SurvivorManager.assign_task(survivor_id, "Scavenge")
+	activity_changed.emit()
+
 func get_job(survivor_id: int) -> Dictionary:
 	return Dictionary(active_jobs.get(survivor_id, {}))
 
@@ -84,6 +95,11 @@ func _complete_job(survivor_id: int) -> void:
 		return
 	var task := String(job.get("task", "Rest"))
 	var message := _apply_reward(survivor_id, task)
+	if task == "Scavenge" and String(job.get("location", "")) != "":
+		SurvivorManager.assign_task(survivor_id, "Rest")
+		start_task(survivor_id, "Rest")
+		job_completed.emit(survivor_id, task, message)
+		return
 	job["progress"] = 0.0
 	job["duration"] = float(TASK_DURATIONS.get(task, 12.0)) + randf_range(-2.0, 2.0)
 	active_jobs[survivor_id] = job
@@ -91,6 +107,7 @@ func _complete_job(survivor_id: int) -> void:
 
 func _apply_reward(survivor_id: int, task: String) -> String:
 	var name := SurvivorManager.get_survivor_name(survivor_id)
+	var job := get_job(survivor_id)
 	match task:
 		"Rest":
 			SurvivorManager.heal_survivor(survivor_id, 4)
@@ -107,6 +124,10 @@ func _apply_reward(survivor_id: int, task: String) -> String:
 			var building := BuildingManager.repair_lowest_condition(5)
 			return "%s repaired %s." % [name, building.get("name", "the base")]
 		"Scavenge":
+			var location := String(job.get("location", ""))
+			if location != "":
+				var result := ScavengeManager.run_scavenge(location, survivor_id, false)
+				return "%s returned from %s. %s" % [name, location, result.get("message", "Scavenge complete.")]
 			ResourceManager.add_resource("materials", randi_range(1, 4))
 			ResourceManager.add_resource("noise", 1)
 			return "%s hauled in useful salvage." % name
