@@ -76,6 +76,16 @@ res://
 
 The project is configured for a landscape mobile viewport of `1280 x 720` with canvas item stretching. On phones, rotate the device to landscape after installing the APK.
 
+## Smoke Test
+
+A headless smoke test checks the core loop managers without manual clicking:
+
+```bash
+Godot_v4.6.3-stable_win64.exe --headless --path . -s tests/SmokeTest.gd
+```
+
+It starts a new game, claims a building, installs an upgrade, starts and completes a scavenge job, previews night defence, saves, reloads, and ends the day. The test backs up and restores any existing `user://dead_shift_save.json`.
+
 ## Android Landscape Orientation
 
 Landscape is already set in `project.godot`:
