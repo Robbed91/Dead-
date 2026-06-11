@@ -2,6 +2,15 @@ extends Node
 
 signal resources_changed
 
+const CAPPED_VALUES := {
+	"power": 100,
+	"morale": 100,
+	"security": 100,
+	"infection_risk": 100,
+	"noise": 100,
+	"horde_threat": 100,
+}
+
 var resources: Dictionary = {}
 
 func _ready() -> void:
@@ -32,7 +41,7 @@ func get_value(key: String) -> int:
 	return int(resources.get(key, 0))
 
 func set_value(key: String, value: int) -> void:
-	resources[key] = max(value, 0)
+	resources[key] = clamp(value, 0, int(CAPPED_VALUES.get(key, 9999)))
 	resources_changed.emit()
 
 func add_resource(key: String, amount: int) -> void:
@@ -72,4 +81,3 @@ func to_dict() -> Dictionary:
 func from_dict(data: Dictionary) -> void:
 	resources = data.duplicate(true)
 	resources_changed.emit()
-

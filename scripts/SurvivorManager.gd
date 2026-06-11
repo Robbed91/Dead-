@@ -115,6 +115,12 @@ func injure_random(amount: int, infection_added: int) -> Dictionary:
 	if alive.is_empty():
 		return {}
 	var survivor: Dictionary = alive.pick_random()
+	return injure_survivor(int(survivor["id"]), amount, infection_added)
+
+func injure_survivor(id: int, amount: int, infection_added: int) -> Dictionary:
+	var survivor := _find_survivor(id)
+	if survivor.is_empty() or survivor.get("status", "Healthy") == "Dead":
+		return {}
 	survivor["health"] = max(0, int(survivor["health"]) - amount)
 	survivor["infection_risk"] = min(100, int(survivor["infection_risk"]) + infection_added)
 	if int(survivor["health"]) <= 0:
@@ -125,6 +131,13 @@ func injure_random(amount: int, infection_added: int) -> Dictionary:
 		survivor["status"] = "Injured"
 	survivors_changed.emit()
 	return survivor
+
+func adjust_morale(id: int, amount: int) -> void:
+	var survivor := _find_survivor(id)
+	if survivor.is_empty() or survivor.get("status", "Healthy") == "Dead":
+		return
+	survivor["morale"] = clamp(int(survivor.get("morale", 75)) + amount, 0, 100)
+	survivors_changed.emit()
 
 func generate_recruit() -> Dictionary:
 	var role: String = RECRUIT_ROLES.pick_random()
@@ -167,3 +180,9 @@ func from_dict(data: Dictionary) -> void:
 	next_id = int(data.get("next_id", survivors.size() + 1))
 	ResourceManager.set_value("population", survivors.filter(func(s): return s.get("status", "Healthy") != "Dead").size())
 	survivors_changed.emit()
+
+func _find_survivor(id: int) -> Dictionary:
+	for survivor in survivors:
+		if int(survivor["id"]) == id:
+			return survivor
+	return {}

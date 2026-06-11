@@ -144,6 +144,9 @@ func end_day() -> Dictionary:
 		add_log(message)
 	for message in BuildingManager.apply_use_bonuses():
 		add_log(message)
+	var colony_event := _resolve_colony_event()
+	if colony_event != "":
+		add_log(colony_event)
 	var consumption := ResourceManager.apply_daily_consumption(SurvivorManager.get_available_scavengers().size())
 	if int(consumption["shortage"]) > 0:
 		add_log("Food or water shortage hurt morale.")
@@ -201,3 +204,39 @@ func _check_failure_state() -> void:
 	if game_over_message != "":
 		add_log(game_over_message)
 		game_over.emit(game_over_message)
+
+func _resolve_colony_event() -> String:
+	if randi_range(1, 100) > 38:
+		return ""
+	var roll := randi_range(1, 6)
+	match roll:
+		1:
+			var found := randi_range(4, 12)
+			ResourceManager.add_resource("materials", found)
+			return "A storage cage was forced open. Materials +%d." % found
+		2:
+			ResourceManager.add_resource("fuel", -randi_range(2, 5))
+			ResourceManager.add_resource("noise", 3)
+			return "The generator coughed through the evening. Fuel lost and noise increased."
+		3:
+			var available := SurvivorManager.get_available_scavengers()
+			if available.is_empty():
+				return ""
+			var survivor: Dictionary = available.pick_random()
+			SurvivorManager.adjust_morale(int(survivor["id"]), -4)
+			ResourceManager.add_resource("morale", -1)
+			return "%s started an argument over rationing. Morale slipped." % survivor["name"]
+		4:
+			ResourceManager.add_resource("water", randi_range(4, 10))
+			ResourceManager.add_resource("morale", 1)
+			return "Rain barrels filled overnight. Water reserves improved."
+		5:
+			ResourceManager.add_resource("horde_threat", 4)
+			ResourceManager.add_resource("noise", -3)
+			return "Movement was spotted beyond the estate. The horde is closer."
+		6:
+			if ResourceManager.get_value("medicine") >= 2:
+				ResourceManager.add_resource("medicine", -2)
+				ResourceManager.add_resource("infection_risk", -3)
+				return "Jess organised a quick clinic. Medicine used, infection risk reduced."
+	return ""

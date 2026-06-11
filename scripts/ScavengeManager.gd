@@ -34,7 +34,7 @@ func run_scavenge(location_name: String, survivor_id: int, assign_task := true) 
 
 	var injured_survivor := {}
 	if injury:
-		injured_survivor = SurvivorManager.injure_random(randi_range(8, 24), 8 if infection else 0)
+		injured_survivor = SurvivorManager.injure_survivor(survivor_id, randi_range(8, 24), 8 if infection else 0)
 		ResourceManager.add_resource("morale", -2)
 	if infection:
 		ResourceManager.add_resource("infection_risk", 2)

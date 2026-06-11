@@ -2,19 +2,21 @@
 
 **Survive. Build. Defend.**
 
-Dead Shift is a Godot 4 mobile Android prototype for a 2D zombie survival colony-builder set in a British industrial estate. This first playable version focuses on the colony loop: manage survivors and resources, scavenge, improve buildings, resolve night attacks, save, and continue.
+Dead Shift is a Godot 4 mobile Android prototype for a 2D zombie survival colony-builder set in a British industrial estate. The current build is a landscape command-dashboard version: manage the estate from a single base screen, watch survivor tokens move between jobs, scavenge, improve buildings, handle random colony events, resolve night attacks, save, and continue.
 
 ## Current Playable Loop
 
 - Start a new game from `MainMenu.tscn`.
-- Review resources, colony status, buildings, survivors, and event log.
-- Assign survivor tasks.
+- Review resources, colony status, night threat, buildings, survivors, objectives, alerts, and event log.
+- Assign survivor tasks and watch survivor tokens move around the estate while job progress fills.
 - Assign survivors to claimed buildings.
 - Assign building uses such as Workshop, Watch Post, Medical Bay, Storage, Sleeping Quarters, Quarantine, and Food Prep.
 - Scout, clear, claim, repair, or fortify buildings.
 - Pick a survivor and scavenge locations for food, water, medicine, fuel, tools, materials, and ammo.
+- Scavenging now runs as a timed survivor job before loot and danger resolve.
 - Potentially find recruitable survivors and invite, reject, or quarantine them.
 - Daily survivor jobs and building uses apply small resource, security, morale, infection, and horde-threat effects.
+- Random end-of-day events can add storage finds, generator problems, ration disputes, rain collection, horde movement, or clinic treatment.
 - Prepare defences and resolve the night attack.
 - Consume food and water, update morale and threat, auto-save, and advance the day.
 - Continue from `user://dead_shift_save.json`.
@@ -40,6 +42,7 @@ res://
     ScavengeManager.gd
     NightDefenseManager.gd
     SaveManager.gd
+    ActivityManager.gd
     UIManager.gd
     MainMenu.gd
     SettingsScreen.gd
@@ -69,22 +72,24 @@ res://
 3. Use the bottom navigation tabs to manage the colony.
 4. Use **Resolve Night / End Day** from Colony or Defence to advance the loop.
 
-The project is configured for a portrait mobile viewport of `390 x 844` with canvas item stretching.
+The project is configured for a landscape mobile viewport of `1280 x 720` with canvas item stretching. On phones, rotate the device to landscape after installing the APK.
 
-## Android Portrait Orientation
+## Android Landscape Orientation
 
-Portrait is already set in `project.godot`:
+Landscape is already set in `project.godot`:
 
 ```ini
 [display]
-window/handheld/orientation=1
+window/size/viewport_width=1280
+window/size/viewport_height=720
+window/handheld/orientation=0
 ```
 
 In the editor this is visible under:
 
 **Project > Project Settings > Display > Window > Handheld > Orientation**
 
-Set it to **Portrait** if you change it later.
+Set it to **Landscape** if you change it later.
 
 ## Install Android Export Templates
 
@@ -161,20 +166,21 @@ On desktop test runs, the exact folder is platform-specific and can be inspected
 
 ## Known Limitations
 
-- UI art is placeholder only.
-- Combat is formula-based, not animated.
-- Scavenging has survivor selection, but no multi-person expedition planning yet.
+- UI art is still prototype art: a generated main-menu backdrop plus procedural in-game panels, icons, lights, horde markers, and building cards.
+- Combat is formula-based with night-attack visual feedback, not direct tactical combat.
+- Scavenging has timed survivor expeditions, but no multi-person expedition planning yet.
 - Building assignment and building-use bonuses are intentionally simple.
 - Crafting is a small prototype tab, not a full production chain.
-- No pathfinding, base map, character movement, or final audio.
+- Survivor movement is token-based rather than full sprite pathfinding.
+- No final audio, final character portraits, or final environment art yet.
 - Android export still requires local Godot export templates, SDK, JDK, and signing configuration.
 
 ## Suggested Next Phase
 
-- Add a simple industrial estate map view with tappable building lots.
-- Add survivor selection for scavenging and building assignment.
-- Expand building uses into functional bonuses.
-- Add more event variety: alarms, trader visits, sickness, disputes, weather, and horde warnings.
-- Add survivor job effects so cooks, medics, guards, and builders influence daily outcomes.
-- Add lightweight placeholder animations, sound toggles, and improved mobile theme polish.
+- Replace procedural building blocks with hand-authored or generated building art per lot.
+- Add proper survivor portrait art and larger animated character sprites.
+- Add multi-survivor scavenging, expedition loadouts, and vehicle use.
+- Expand crafting into weapons, barricades, traps, and facility upgrades.
+- Add more event variety: alarms, trader visits, sickness, disputes, weather, horde warnings, and survivor relationship moments.
+- Add sound effects, menu music, night ambience, and Android vibration feedback.
 - Add automated save/load validation tests using Godot's headless runner.

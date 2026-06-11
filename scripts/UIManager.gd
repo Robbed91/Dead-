@@ -48,7 +48,9 @@ var survivors_box: VBoxContainer
 var command_title: Label
 var command_body: VBoxContainer
 var selected_building_label: Label
+var night_preview_label: Label
 var end_day_button: Button
+var ambient_time := 0.0
 
 func _ready() -> void:
 	active_tab = initial_tab if TABS.has(initial_tab) else "Buildings"
@@ -56,6 +58,14 @@ func _ready() -> void:
 	_build_layout()
 	_connect_signals()
 	_refresh()
+
+func _process(delta: float) -> void:
+	ambient_time += delta
+	if estate_board == null:
+		return
+	var map := estate_board.get_child(0) as Control
+	if map != null:
+		map.queue_redraw()
 
 func _build_theme() -> void:
 	var theme := Theme.new()
@@ -197,12 +207,20 @@ func _build_right_panel(right: VBoxContainer) -> void:
 	var survivors := _add_panel(right, Vector2(0, 0))
 	survivors.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	survivors.add_child(_label("SURVIVORS", 13, GREEN))
+	var survivor_scroll := ScrollContainer.new()
+	survivor_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	survivor_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	survivors.add_child(survivor_scroll)
 	survivors_box = VBoxContainer.new()
+	survivors_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	survivors_box.add_theme_constant_override("separation", 4)
-	survivors.add_child(survivors_box)
+	survivor_scroll.add_child(survivors_box)
 
-	var defence := _add_panel(right, Vector2(0, 96))
+	var defence := _add_panel(right, Vector2(0, 118))
 	defence.add_child(_label("NIGHT DEFENCE", 13, RED))
+	night_preview_label = _label("", 11, TEXT)
+	night_preview_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	defence.add_child(night_preview_label)
 	var prep := _small_button("PREPARE DEFENCES")
 	prep.add_theme_color_override("font_color", RED.lightened(0.25))
 	prep.pressed.connect(func(): _show_result(GameManager.prepare_defences()["message"]))
@@ -294,6 +312,8 @@ func _estate_board() -> PanelContainer:
 func _draw_estate_map(map: Control) -> void:
 	var size := map.size
 	map.draw_rect(Rect2(Vector2.ZERO, size), Color("#101519"), true)
+	map.draw_rect(Rect2(Vector2(0, size.y * 0.04), Vector2(size.x, 12)), Color("#25313a"), true)
+	map.draw_rect(Rect2(Vector2(0, size.y * 0.9), Vector2(size.x, 14)), Color("#303a40"), true)
 	for i in range(9):
 		var y := size.y * (0.12 + float(i) * 0.095)
 		map.draw_line(Vector2(0, y), Vector2(size.x, y + sin(i) * 18), Color("#202a30"), 3)
@@ -305,12 +325,38 @@ func _draw_estate_map(map: Control) -> void:
 	for i in range(18):
 		var pos := Vector2(fmod(float(i * 73), size.x), fmod(float(i * 47 + 31), size.y))
 		map.draw_circle(pos, 2.0, Color(0.898, 0.608, 0.251, 0.7))
+	var threat_count := clamp(int(ResourceManager.get_value("horde_threat") / 6), 2, 13)
+	for i in range(threat_count):
+		var wave := sin(ambient_time * 1.4 + i)
+		var pos := Vector2(size.x * (0.05 + float(i) / max(1.0, float(threat_count)) * 0.9), size.y * 0.94 + wave * 4.0)
+		map.draw_circle(pos, 5.0, RED.darkened(0.1))
+		map.draw_line(pos + Vector2(-3, 5), pos + Vector2(3, 5), RED.darkened(0.25), 2)
 	for building in BuildingManager.buildings:
 		var rect := _building_rect(map, building)
 		var color := _building_color(building).darkened(0.35)
 		map.draw_rect(rect.grow(3), Color(0.02, 0.024, 0.027, 0.8), true)
 		map.draw_rect(rect, color, true)
 		map.draw_rect(rect, Color(0.471, 0.518, 0.553, 0.55), false, 1)
+		_draw_building_detail(map, building, rect)
+
+func _draw_building_detail(map: Control, building: Dictionary, rect: Rect2) -> void:
+	var roof := Rect2(rect.position + Vector2(0, 3), Vector2(rect.size.x, max(6.0, rect.size.y * 0.16)))
+	map.draw_rect(roof, Color("#050607").lightened(0.08), true)
+	var condition := clamp(float(building.get("condition", 0)) / 100.0, 0.0, 1.0)
+	var security := clamp(float(building.get("security", 0)) / 100.0, 0.0, 1.0)
+	var infestation := clamp(float(building.get("infestation", 0)) / 100.0, 0.0, 1.0)
+	var bar_w := max(18.0, rect.size.x - 10.0)
+	_draw_map_bar(map, rect.position + Vector2(5, rect.size.y - 18), bar_w, condition, GREEN)
+	_draw_map_bar(map, rect.position + Vector2(5, rect.size.y - 12), bar_w, security, BLUE)
+	if infestation > 0.0:
+		_draw_map_bar(map, rect.position + Vector2(5, rect.size.y - 6), bar_w, infestation, RED)
+	var pulse := (sin(ambient_time * 3.0 + rect.position.x * 0.03) + 1.0) * 0.5
+	if ["Claimed", "Operational", "Fortified"].has(String(building.get("status", ""))):
+		map.draw_circle(rect.position + rect.size * Vector2(0.82, 0.28), 3.0 + pulse * 2.0, ORANGE)
+
+func _draw_map_bar(map: Control, pos: Vector2, width: float, value: float, color: Color) -> void:
+	map.draw_rect(Rect2(pos, Vector2(width, 3)), Color("#060809"), true)
+	map.draw_rect(Rect2(pos, Vector2(width * value, 3)), color, true)
 
 func _position_building_buttons(map: Control) -> void:
 	for building in BuildingManager.buildings:
@@ -355,6 +401,7 @@ func _refresh() -> void:
 	_refresh_survivors()
 	_refresh_estate()
 	_refresh_selected_building()
+	_refresh_night_preview()
 	_refresh_commands()
 
 func _refresh_top_bar() -> void:
@@ -412,7 +459,7 @@ func _refresh_log() -> void:
 
 func _refresh_survivors() -> void:
 	_clear(survivors_box)
-	for survivor in SurvivorManager.survivors.slice(0, 6):
+	for survivor in SurvivorManager.survivors:
 		var row := HBoxContainer.new()
 		row.add_theme_constant_override("separation", 5)
 		survivors_box.add_child(row)
@@ -423,8 +470,12 @@ func _refresh_survivors() -> void:
 		var details := VBoxContainer.new()
 		details.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		row.add_child(details)
-		details.add_child(_label("%s  %s%%" % [survivor["name"], survivor["morale"]], 12, TEXT))
-		details.add_child(_label("%s - %s" % [survivor["role"], survivor["assigned_task"]], 9, MUTED))
+		var job := ActivityManager.get_job(int(survivor["id"]))
+		var job_suffix := ""
+		if String(job.get("location", "")) != "":
+			job_suffix = " @ %s" % String(job["location"])
+		details.add_child(_label("%s  HP %s%%" % [survivor["name"], survivor["health"]], 12, TEXT))
+		details.add_child(_label("%s - %s%s" % [survivor["role"], survivor["assigned_task"], job_suffix], 9, MUTED))
 		var progress := ProgressBar.new()
 		progress.custom_minimum_size = Vector2(0, 8)
 		progress.max_value = 1.0
@@ -458,6 +509,7 @@ func _refresh_activity() -> void:
 	_refresh_log()
 	_refresh_survivors()
 	_refresh_estate()
+	_refresh_night_preview()
 
 func _show_night_wave(result: Dictionary) -> void:
 	if estate_board == null:
@@ -507,6 +559,8 @@ func _position_survivor_tokens(map: Control) -> void:
 		token.tooltip_text = "%s - %s" % [survivor["name"], survivor["assigned_task"]]
 		token.modulate = _role_color(String(survivor["role"]))
 		var destination := _survivor_destination(map, survivor, id)
+		var progress := int(ActivityManager.get_progress(id) * 100.0)
+		token.text = "%s\n%d" % [String(survivor["name"]).substr(0, 1), progress]
 		var tween := create_tween()
 		tween.tween_property(token, "position", destination - token.size * 0.5, 0.45).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 
@@ -525,6 +579,7 @@ func _survivor_destination(map: Control, survivor: Dictionary, id: int) -> Vecto
 			offset += Vector2(-8, -18)
 		"Cook":
 			offset += Vector2(0, 24)
+	offset += Vector2(sin(ambient_time * 2.0 + float(id)) * 4.0, cos(ambient_time * 1.7 + float(id)) * 3.0)
 	return rect.position + rect.size * 0.5 + offset
 
 func _building_for_survivor(survivor: Dictionary) -> Dictionary:
@@ -566,6 +621,15 @@ func _refresh_selected_building() -> void:
 		return
 	selected_building_label.text = "%s\n%s | %s\nCond %d  Sec %d  Inf %d" % [building["name"], building["status"], building["current_use"], building["condition"], building["security"], building["infestation"]]
 
+func _refresh_night_preview() -> void:
+	if night_preview_label == null:
+		return
+	var preview := NightDefenseManager.get_preview()
+	var attack := int(preview["attack_strength"])
+	var defence := int(preview["defence_strength"])
+	var state := "HOLDING" if defence >= attack else "AT RISK"
+	night_preview_label.text = "Attack %d  Defence %d\nGuards %d  Fort bonus %d\n%s" % [attack, defence, int(preview["guards"]), int(preview["fortified_bonus"]), state]
+
 func _refresh_commands() -> void:
 	for tab in TABS:
 		tab_buttons[tab].modulate = ORANGE if tab == active_tab else Color.WHITE
@@ -598,6 +662,7 @@ func _build_building_commands() -> void:
 	for action in ["Scout", "Clear", "Claim", "Repair", "Fortify"]:
 		var button := _small_button(action)
 		button.custom_minimum_size = Vector2(94, 54)
+		button.disabled = not _can_building_action(building, action)
 		button.pressed.connect(_on_building_action.bind(int(building["id"]), action))
 		command_body.add_child(button)
 	var use_select := OptionButton.new()
@@ -630,8 +695,9 @@ func _build_building_commands() -> void:
 	command_body.add_child(assign)
 
 func _build_survivor_commands() -> void:
-	for survivor in SurvivorManager.survivors.slice(0, 5):
-		var button := _small_button("%s\n%s" % [survivor["name"], survivor["assigned_task"]])
+	for survivor in SurvivorManager.survivors:
+		var job_progress := int(ActivityManager.get_progress(int(survivor["id"])) * 100.0)
+		var button := _small_button("%s\n%s %d%%" % [survivor["name"], survivor["assigned_task"], job_progress])
 		button.custom_minimum_size = Vector2(112, 54)
 		button.pressed.connect(_show_task_popup.bind(int(survivor["id"])))
 		command_body.add_child(button)
@@ -645,9 +711,10 @@ func _build_scavenge_commands() -> void:
 			selector.select(selector.get_item_count() - 1)
 	selector.item_selected.connect(_on_scavenger_selected.bind(selector))
 	command_body.add_child(selector)
-	for location in ScavengeManager.locations.slice(0, 4):
-		var button := _small_button(String(location["name"]))
-		button.custom_minimum_size = Vector2(132, 54)
+	for location in ScavengeManager.locations:
+		var loot_text := ", ".join(Array(location.get("loot", [])))
+		var button := _small_button("%s\n%s | %s" % [location["name"], String(location["danger"]).to_upper(), loot_text])
+		button.custom_minimum_size = Vector2(162, 54)
 		button.pressed.connect(_on_scavenge.bind(String(location["name"])))
 		command_body.add_child(button)
 
@@ -774,6 +841,20 @@ func _selected_building() -> Dictionary:
 func _building_button_text(building: Dictionary) -> String:
 	var assigned := Array(building.get("assigned_survivors", []))
 	return "%s\n%s  %d/%d" % [building["name"], building["status"], assigned.size(), int(building.get("capacity", 0))]
+
+func _can_building_action(building: Dictionary, action: String) -> bool:
+	match action:
+		"Scout":
+			return String(building.get("status", "")) == "Unknown"
+		"Clear":
+			return ["Scouted", "Infested"].has(String(building.get("status", ""))) and ResourceManager.get_value("ammo") >= 2
+		"Claim":
+			return String(building.get("status", "")) == "Cleared"
+		"Repair":
+			return ["Claimed", "Operational", "Fortified"].has(String(building.get("status", ""))) and ResourceManager.get_value("materials") >= 10 and int(building.get("condition", 0)) < 100
+		"Fortify":
+			return ["Claimed", "Operational"].has(String(building.get("status", ""))) and ResourceManager.get_value("materials") >= 15
+	return false
 
 func _building_color(building: Dictionary) -> Color:
 	match String(building.get("status", "")):
