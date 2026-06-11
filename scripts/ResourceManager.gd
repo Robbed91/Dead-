@@ -27,12 +27,12 @@ func reset() -> void:
 		"ammo": 25,
 		"tools": 10,
 		"morale": 75,
-		"security": 45,
+		"security": 30,
 		"infection_risk": 5,
-		"noise": 20,
-		"horde_threat": 25,
+		"noise": 4,
+		"horde_threat": 0,
 		"beds": 6,
-		"population": 5,
+		"population": 1,
 		"day_number": 1
 	}
 	resources_changed.emit()

@@ -30,7 +30,11 @@ const DEFENCE_TACTICS := {
 }
 
 func get_preview() -> Dictionary:
-	var attack_strength := ResourceManager.get_value("day_number") * 5 + ResourceManager.get_value("horde_threat") + ResourceManager.get_value("noise")
+	var day := ResourceManager.get_value("day_number")
+	var population := SurvivorManager.get_population_count()
+	var attack_strength := 0
+	if day >= 3 or population >= 2 or ResourceManager.get_value("noise") >= 18:
+		attack_strength = max(0, (day - 2) * 5 + ResourceManager.get_value("horde_threat") + ResourceManager.get_value("noise") - 8)
 	var upgrade_bonus := BuildingManager.get_upgrade_defence_bonus()
 	var defence_strength := ResourceManager.get_value("security") + SurvivorManager.get_guard_count() * 10 + BuildingManager.get_fortified_bonus() + upgrade_bonus
 	return {
@@ -60,6 +64,14 @@ func resolve_night() -> Dictionary:
 	var preview := get_preview()
 	var attack_strength: int = preview["attack_strength"]
 	var defence_strength: int = preview["defence_strength"]
+	if attack_strength <= 0:
+		var quiet_result := preview.duplicate(true)
+		ResourceManager.add_resource("morale", 1)
+		ResourceManager.add_resource("noise", -2)
+		quiet_result["success"] = true
+		quiet_result["message"] = "The estate stayed quiet. No horde reached the warehouse."
+		night_resolved.emit(quiet_result)
+		return quiet_result
 	var success := defence_strength >= attack_strength
 	var result := preview.duplicate(true)
 	result["success"] = success

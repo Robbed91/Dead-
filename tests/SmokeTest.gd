@@ -17,7 +17,8 @@ func _run() -> void:
 	_backup_save()
 	GameManager.new_game()
 	_assert_eq(ResourceManager.get_value("day_number"), 1, "new game starts on day 1")
-	_assert_true(SurvivorManager.survivors.size() >= 5, "starting survivors loaded")
+	_assert_eq(SurvivorManager.survivors.size(), 1, "new game starts with Billy alone")
+	_assert_eq(ResourceManager.get_value("population"), 1, "starting population is one")
 	_assert_true(BuildingManager.buildings.size() >= 9, "starting buildings loaded")
 
 	var clear_result := GameManager.building_action(2, "Clear")
@@ -32,20 +33,19 @@ func _run() -> void:
 
 	GameManager.assign_survivor_task(1, "Guard")
 	_assert_eq(ActivityManager.get_job(1).get("task", ""), "Guard", "survivor task starts tracked activity")
-	GameManager.assign_survivor_task(3, "Medical")
 
-	var scavenge_start := GameManager.scavenge("Tool Hire Depot", 2)
+	var scavenge_start := GameManager.scavenge("Tool Hire Depot", 1)
 	_assert_true(bool(scavenge_start.get("ok", false)), "can start timed scavenging")
-	_assert_eq(ActivityManager.get_job(2).get("location", ""), "Tool Hire Depot", "scavenging job stores target location")
-	ActivityManager.call("_complete_job", 2)
-	_assert_eq(String(SurvivorManager.survivors[1].get("assigned_task", "")), "Rest", "scavenger returns to rest after completing expedition")
+	_assert_eq(ActivityManager.get_job(1).get("location", ""), "Tool Hire Depot", "scavenging job stores target location")
+	ActivityManager.call("_complete_job", 1)
+	_assert_eq(String(SurvivorManager.survivors[0].get("assigned_task", "")), "Rest", "scavenger returns to rest after completing expedition")
 	var depot := _location("Tool Hire Depot")
 	_assert_true(int(depot.get("remaining", 100)) < 100, "scavenging depletes location supplies")
 	_assert_true(depot.has("cooldown"), "scavenge location tracks cooldown")
 	var depot_remaining_after_scavenge := int(depot.get("remaining", 0))
 
 	var preview := NightDefenseManager.get_preview()
-	_assert_true(int(preview.get("attack_strength", 0)) > 0, "night attack preview calculates attack")
+	_assert_true(int(preview.get("attack_strength", 0)) >= 0, "night attack preview calculates attack")
 	_assert_true(int(preview.get("defence_strength", 0)) > 0, "night attack preview calculates defence")
 	var noise_before_tactic := ResourceManager.get_value("noise")
 	var tactic := GameManager.prepare_defences("quiet_watch")
@@ -56,6 +56,7 @@ func _run() -> void:
 	billy["health"] = 64
 	billy["infection_risk"] = 58
 	billy["status"] = "At Risk"
+	GameManager.assign_survivor_task(1, "Medical")
 	var condition_messages := SurvivorManager.apply_condition_progression()
 	_assert_true(not condition_messages.is_empty(), "condition progression creates medical/quarantine feedback")
 	_assert_true(int(billy["health"]) > 64 or int(billy["infection_risk"]) < 60, "medical progression changes survivor condition")

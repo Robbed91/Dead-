@@ -6,7 +6,7 @@ signal recruit_found(recruit: Dictionary)
 signal game_over(message: String)
 
 var event_log: Array = []
-var current_objective := "Assign tasks, scavenge supplies, and survive the night."
+var current_objective := "Billy is alone. Scavenge nearby units, find survivors, and build the colony."
 var pending_recruit: Dictionary = {}
 var phase := "Morning"
 var game_over_message := ""
@@ -26,7 +26,7 @@ func new_game() -> void:
 	pending_recruit = {}
 	phase = "Morning"
 	game_over_message = ""
-	add_log("Day 1: Dead Shift begins at the Main Warehouse.")
+	add_log("Day 1: Billy barricaded himself inside the Main Warehouse.")
 	_update_objective()
 	SaveManager.save_game(event_log)
 	state_changed.emit()
@@ -211,7 +211,9 @@ func _update_objective() -> void:
 		current_objective = game_over_message
 		return
 	var r := ResourceManager.resources
-	if BuildingManager.count_by_status("Claimed") + BuildingManager.count_by_status("Operational") + BuildingManager.count_by_status("Fortified") < 2:
+	if SurvivorManager.get_population_count() <= 1:
+		current_objective = "Billy is alone. Scout a nearby location and look for survivors."
+	elif BuildingManager.count_by_status("Claimed") + BuildingManager.count_by_status("Operational") + BuildingManager.count_by_status("Fortified") < 2:
 		current_objective = "Scout, clear, and claim a second building for the colony."
 	elif int(r["food"]) < 40 or int(r["water"]) < 40:
 		current_objective = "Food and water are low. Send a survivor to scavenge supplies."

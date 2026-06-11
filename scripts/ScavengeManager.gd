@@ -40,7 +40,12 @@ func run_scavenge(location_name: String, survivor_id: int, assign_task := true) 
 		ResourceManager.add_resource("morale", -2)
 	if infection:
 		ResourceManager.add_resource("infection_risk", 2)
-	if bool(location["possible_survivors"]) and randi_range(1, 100) <= 20:
+	var recruit_chance := 20
+	if SurvivorManager.get_population_count() <= 1:
+		recruit_chance = 65
+	elif SurvivorManager.get_population_count() <= 3:
+		recruit_chance = 35
+	if bool(location["possible_survivors"]) and randi_range(1, 100) <= recruit_chance:
 		recruit = SurvivorManager.generate_recruit()
 	_update_location_after_scavenge(location, danger, alarm)
 
