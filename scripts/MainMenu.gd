@@ -10,10 +10,17 @@ const MUTED := Color("#9aa4aa")
 const MENU_BACKGROUND := preload("res://assets/placeholders/menu_background.png")
 
 var continue_button: Button
+var backdrop_layer: Control
+var menu_time := 0.0
 
 func _ready() -> void:
 	_build_theme()
 	_build_menu()
+
+func _process(delta: float) -> void:
+	menu_time += delta
+	if backdrop_layer != null:
+		backdrop_layer.queue_redraw()
 
 func _build_theme() -> void:
 	var theme := Theme.new()
@@ -48,6 +55,7 @@ func _build_menu() -> void:
 	add_child(image)
 
 	var backdrop := Control.new()
+	backdrop_layer = backdrop
 	backdrop.set_anchors_preset(Control.PRESET_FULL_RECT)
 	backdrop.draw.connect(_draw_backdrop.bind(backdrop))
 	add_child(backdrop)
@@ -119,23 +127,29 @@ func _build_menu() -> void:
 
 func _draw_backdrop(node: Control) -> void:
 	var size := node.size
-	node.draw_rect(Rect2(Vector2.ZERO, size), Color(0.0, 0.0, 0.0, 0.28), true)
-	node.draw_rect(Rect2(Vector2(0, size.y * 0.62), Vector2(size.x, size.y * 0.38)), Color(0.067, 0.082, 0.102, 0.42), true)
+	node.draw_rect(Rect2(Vector2.ZERO, size), Color(0.0, 0.0, 0.0, 0.22), true)
+	node.draw_rect(Rect2(Vector2.ZERO, Vector2(size.x, size.y * 0.36)), Color(0.0, 0.0, 0.0, 0.34), true)
+	for i in range(8):
+		var drift := fmod(menu_time * (8.0 + float(i)) + float(i) * 97.0, size.x + 220.0) - 110.0
+		var y := size.y * (0.2 + float(i % 4) * 0.12)
+		var fog := Color(0.45, 0.52, 0.56, 0.045)
+		node.draw_rect(Rect2(Vector2(drift, y + 12.0), Vector2(220, 14)), fog, true)
+		node.draw_circle(Vector2(drift, y + 19.0), 19.0, fog)
+		node.draw_circle(Vector2(drift + 220.0, y + 19.0), 19.0, fog)
 	for i in range(9):
-		var x := size.x * (float(i) / 8.0)
-		node.draw_rect(Rect2(Vector2(x - 18, size.y * 0.28 + sin(i) * 18), Vector2(80, size.y * 0.35)), Color("#151b21"), true)
-		node.draw_rect(Rect2(Vector2(x - 18, size.y * 0.28 + sin(i) * 18), Vector2(80, size.y * 0.35)), Color("#2b353d"), false, 1)
-	for i in range(6):
-		var lamp := Vector2(size.x * (0.12 + i * 0.16), size.y * 0.53)
-		node.draw_line(lamp, lamp + Vector2(0, -120), Color("#252c32"), 4)
-		node.draw_circle(lamp + Vector2(0, -120), 7, ORANGE)
-		node.draw_circle(lamp + Vector2(0, -120), 24, Color(ORANGE.r, ORANGE.g, ORANGE.b, 0.12))
-	for i in range(14):
-		var p := Vector2(size.x * (0.04 + fmod(i * 0.073, 0.9)), size.y * (0.72 + fmod(i * 0.041, 0.2)))
-		node.draw_circle(p, 5, Color("#20262c"))
-		node.draw_line(p, p + Vector2(0, -20), Color("#20262c"), 3)
-	node.draw_rect(Rect2(Vector2(size.x * 0.73, size.y * 0.34), Vector2(size.x * 0.2, size.y * 0.23)), Color("#1b2026"), true)
-	node.draw_rect(Rect2(Vector2(size.x * 0.73, size.y * 0.34), Vector2(size.x * 0.2, size.y * 0.23)), RED.darkened(0.25), false, 2)
+		var p := Vector2(size.x * (0.18 + fmod(float(i) * 0.083 + menu_time * 0.01, 0.56)), size.y * (0.62 + fmod(float(i) * 0.067, 0.2)))
+		_draw_menu_zombie(node, p + Vector2(0, sin(menu_time * 3.0 + float(i)) * 2.0), 0.7 + float(i % 3) * 0.1)
+	var glow := 0.15 + (sin(menu_time * 4.0) + 1.0) * 0.04
+	node.draw_circle(size * Vector2(0.74, 0.31), 38, Color(RED.r, RED.g, RED.b, glow))
+
+func _draw_menu_zombie(node: Control, pos: Vector2, scale: float) -> void:
+	var color := Color("#10161a")
+	node.draw_circle(pos + Vector2(0, -17) * scale, 5.0 * scale, color)
+	node.draw_line(pos + Vector2(0, -12) * scale, pos + Vector2(-2, 10) * scale, color, 4.0 * scale)
+	node.draw_line(pos + Vector2(-2, -6) * scale, pos + Vector2(-12, 2) * scale, color, 3.0 * scale)
+	node.draw_line(pos + Vector2(0, -5) * scale, pos + Vector2(10, 4) * scale, color, 3.0 * scale)
+	node.draw_line(pos + Vector2(-2, 10) * scale, pos + Vector2(-9, 24) * scale, color, 3.0 * scale)
+	node.draw_line(pos + Vector2(-1, 10) * scale, pos + Vector2(7, 23) * scale, color, 3.0 * scale)
 
 func _add_button(parent: VBoxContainer, text: String, callback: Callable, accent: Color) -> Button:
 	var button := Button.new()

@@ -329,6 +329,9 @@ func _estate_board() -> PanelContainer:
 		button.clip_text = true
 		button.alignment = HORIZONTAL_ALIGNMENT_CENTER
 		button.add_theme_font_size_override("font_size", 12)
+		button.add_theme_stylebox_override("normal", _map_button_style(Color(0.04, 0.05, 0.06, 0.34), Color(0.85, 0.9, 0.92, 0.65)))
+		button.add_theme_stylebox_override("hover", _map_button_style(Color(0.14, 0.09, 0.04, 0.48), ORANGE))
+		button.add_theme_stylebox_override("pressed", _map_button_style(Color(0.2, 0.11, 0.03, 0.56), ORANGE))
 		button.pressed.connect(_select_building.bind(int(building["id"])))
 		map.add_child(button)
 		building_buttons[int(building["id"])] = button
@@ -345,27 +348,21 @@ func _estate_board() -> PanelContainer:
 func _draw_estate_map(map: Control) -> void:
 	var size := map.size
 	map.draw_rect(Rect2(Vector2.ZERO, size), Color("#101519"), true)
-	map.draw_texture_rect(ESTATE_BACKGROUND, Rect2(Vector2.ZERO, size), false, Color(0.92, 0.92, 0.92, 0.82))
-	map.draw_rect(Rect2(Vector2.ZERO, size), Color(0.0, 0.0, 0.0, 0.18), true)
-	map.draw_rect(Rect2(Vector2(0, size.y * 0.04), Vector2(size.x, 12)), Color(0.145, 0.192, 0.227, 0.65), true)
-	map.draw_rect(Rect2(Vector2(0, size.y * 0.9), Vector2(size.x, 14)), Color(0.188, 0.227, 0.251, 0.65), true)
-	for i in range(9):
-		var y := size.y * (0.12 + float(i) * 0.095)
-		map.draw_line(Vector2(0, y), Vector2(size.x, y + sin(i) * 18), Color(0.125, 0.165, 0.188, 0.28), 2)
-	for i in range(7):
-		var x := size.x * (0.08 + float(i) * 0.14)
-		map.draw_line(Vector2(x, 0), Vector2(x + cos(i) * 20, size.y), Color(0.11, 0.145, 0.169, 0.24), 2)
-	map.draw_circle(size * Vector2(0.48, 0.5), 24, Color(0.843, 0.467, 0.145, 0.65))
-	map.draw_circle(size * Vector2(0.48, 0.5), 15, Color(0.204, 0.129, 0.047, 0.75))
+	map.draw_texture_rect(ESTATE_BACKGROUND, Rect2(Vector2.ZERO, size), false, Color(0.96, 0.96, 0.96, 0.94))
+	map.draw_rect(Rect2(Vector2.ZERO, size), Color(0.0, 0.0, 0.0, 0.12), true)
+	_draw_growth_perimeter(map)
+	var fire_pulse := 0.72 + (sin(ambient_time * 6.0) + 1.0) * 0.12
+	map.draw_circle(size * Vector2(0.48, 0.5), 34, Color(0.843, 0.467, 0.145, 0.16 * fire_pulse))
+	map.draw_circle(size * Vector2(0.48, 0.5), 18, Color(0.843, 0.467, 0.145, 0.62 * fire_pulse))
+	map.draw_circle(size * Vector2(0.48, 0.5), 9, Color(0.3, 0.12, 0.035, 0.8))
 	for i in range(18):
 		var pos := Vector2(fmod(float(i * 73), size.x), fmod(float(i * 47 + 31), size.y))
-		map.draw_circle(pos, 2.0, Color(0.898, 0.608, 0.251, 0.45))
+		_draw_map_light(map, pos, 2.0 + sin(ambient_time * 2.4 + float(i)) * 0.6, ORANGE)
 	var threat_count: int = clampi(int(ResourceManager.get_value("horde_threat") / 6), 2, 13)
 	for i in range(threat_count):
 		var wave: float = sin(ambient_time * 1.4 + i)
 		var pos: Vector2 = Vector2(size.x * (0.05 + float(i) / maxf(1.0, float(threat_count)) * 0.9), size.y * 0.94 + wave * 4.0)
-		map.draw_circle(pos, 5.0, RED.darkened(0.1))
-		map.draw_line(pos + Vector2(-3, 5), pos + Vector2(3, 5), RED.darkened(0.25), 2)
+		_draw_zombie_silhouette(map, pos, 0.75, RED.darkened(0.15))
 	for building in BuildingManager.buildings:
 		var rect := _building_rect(map, building)
 		var color := _building_color(building).darkened(0.15)
@@ -377,6 +374,8 @@ func _draw_estate_map(map: Control) -> void:
 func _draw_building_detail(map: Control, building: Dictionary, rect: Rect2) -> void:
 	var roof := Rect2(rect.position + Vector2(0, 3), Vector2(rect.size.x, max(6.0, rect.size.y * 0.16)))
 	map.draw_rect(roof, Color("#050607").lightened(0.08), true)
+	var use_icon_pos := rect.position + rect.size * Vector2(0.16, 0.31)
+	_draw_building_use_icon(map, String(building.get("current_use", "")), use_icon_pos, minf(rect.size.x, rect.size.y) * 0.12)
 	var condition: float = clampf(float(building.get("condition", 0)) / 100.0, 0.0, 1.0)
 	var security: float = clampf(float(building.get("security", 0)) / 100.0, 0.0, 1.0)
 	var infestation: float = clampf(float(building.get("infestation", 0)) / 100.0, 0.0, 1.0)
@@ -387,7 +386,69 @@ func _draw_building_detail(map: Control, building: Dictionary, rect: Rect2) -> v
 		_draw_map_bar(map, rect.position + Vector2(5, rect.size.y - 6), bar_w, infestation, RED)
 	var pulse := (sin(ambient_time * 3.0 + rect.position.x * 0.03) + 1.0) * 0.5
 	if ["Claimed", "Operational", "Fortified"].has(String(building.get("status", ""))):
-		map.draw_circle(rect.position + rect.size * Vector2(0.82, 0.28), 3.0 + pulse * 2.0, ORANGE)
+		var lamp := rect.position + rect.size * Vector2(0.82, 0.28)
+		_draw_map_light(map, lamp, 5.0 + pulse * 3.0, ORANGE)
+	if String(building.get("status", "")) == "Infested":
+		_draw_zombie_silhouette(map, rect.position + rect.size * Vector2(0.78, 0.68), 0.75, RED)
+
+func _draw_growth_perimeter(map: Control) -> void:
+	var size := map.size
+	var tier_index := GameManager.colony_tier_index
+	var color := GREEN if tier_index >= 2 else ORANGE
+	for i in range(tier_index + 1):
+		var inset := 10.0 + float(i) * 10.0
+		map.draw_rect(Rect2(Vector2(inset, inset), size - Vector2(inset * 2.0, inset * 2.0)), Color(color.r, color.g, color.b, 0.08), false, 2)
+
+func _draw_map_light(map: Control, pos: Vector2, radius: float, color: Color) -> void:
+	map.draw_circle(pos, radius * 4.0, Color(color.r, color.g, color.b, 0.08))
+	map.draw_circle(pos, radius, Color(color.r, color.g, color.b, 0.72))
+
+func _draw_zombie_silhouette(map: Control, pos: Vector2, scale: float, color: Color) -> void:
+	var sway := sin(ambient_time * 2.2 + pos.x * 0.01) * 2.0
+	map.draw_circle(pos + Vector2(sway, -10) * scale, 4.5 * scale, color)
+	map.draw_line(pos + Vector2(sway, -6) * scale, pos + Vector2(-1, 7) * scale, color, 3.0 * scale)
+	map.draw_line(pos + Vector2(-1, -2) * scale, pos + Vector2(-9, 5) * scale, color, 2.0 * scale)
+	map.draw_line(pos + Vector2(0, -2) * scale, pos + Vector2(8, 4) * scale, color, 2.0 * scale)
+	map.draw_line(pos + Vector2(-1, 7) * scale, pos + Vector2(-6, 15) * scale, color, 2.0 * scale)
+	map.draw_line(pos + Vector2(0, 7) * scale, pos + Vector2(7, 15) * scale, color, 2.0 * scale)
+
+func _draw_building_use_icon(map: Control, use_name: String, pos: Vector2, scale: float) -> void:
+	var icon_color := _use_icon_color(use_name)
+	map.draw_circle(pos, maxf(4.0, scale * 1.6), Color(0.0, 0.0, 0.0, 0.48))
+	match use_name:
+		"Medical Bay":
+			map.draw_line(pos + Vector2(-scale, 0), pos + Vector2(scale, 0), icon_color, 2)
+			map.draw_line(pos + Vector2(0, -scale), pos + Vector2(0, scale), icon_color, 2)
+		"Watch Post":
+			map.draw_arc(pos, scale, PI, TAU, 8, icon_color, 2)
+			map.draw_line(pos, pos + Vector2(0, scale), icon_color, 2)
+		"Workshop":
+			map.draw_line(pos + Vector2(-scale, scale), pos + Vector2(scale, -scale), icon_color, 2)
+		"Food Prep":
+			map.draw_circle(pos, maxf(2.0, scale * 0.55), icon_color)
+			map.draw_line(pos + Vector2(scale * 0.6, -scale * 0.7), pos + Vector2(scale * 1.2, -scale * 1.2), icon_color, 2)
+		"Sleeping Quarters":
+			map.draw_rect(Rect2(pos - Vector2(scale, scale * 0.35), Vector2(scale * 2.0, scale * 0.7)), icon_color, false, 2)
+		"Vehicle Bay":
+			map.draw_rect(Rect2(pos - Vector2(scale, scale * 0.55), Vector2(scale * 2.0, scale * 1.1)), icon_color, false, 2)
+		_:
+			map.draw_circle(pos, maxf(2.0, scale * 0.45), icon_color)
+
+func _use_icon_color(use_name: String) -> Color:
+	match use_name:
+		"Medical Bay":
+			return GREEN
+		"Watch Post":
+			return RED
+		"Workshop":
+			return ORANGE
+		"Food Prep":
+			return YELLOW
+		"Sleeping Quarters":
+			return BLUE
+		"Vehicle Bay":
+			return TEXT
+	return MUTED
 
 func _draw_map_bar(map: Control, pos: Vector2, width: float, value: float, color: Color) -> void:
 	map.draw_rect(Rect2(pos, Vector2(width, 3)), Color("#060809"), true)
@@ -556,10 +617,9 @@ func _show_night_wave(result: Dictionary) -> void:
 		return
 	var count := 10 if bool(result.get("success", false)) else 18
 	for i in range(count):
-		var token := ColorRect.new()
-		token.color = RED if not bool(result.get("success", false)) else ORANGE
+		var token := _zombie_wave_token(not bool(result.get("success", false)))
 		token.custom_minimum_size = Vector2(10, 10)
-		token.size = Vector2(10, 10)
+		token.size = Vector2(18, 26)
 		var side := i % 4
 		var start := Vector2.ZERO
 		match side:
@@ -579,6 +639,16 @@ func _show_night_wave(result: Dictionary) -> void:
 		tween.tween_property(token, "position", target, randf_range(0.7, 1.2))
 		tween.tween_property(token, "modulate:a", 0.0, 0.45)
 		tween.tween_callback(token.queue_free)
+
+func _zombie_wave_token(danger: bool) -> Control:
+	var token := Control.new()
+	var color := RED if danger else ORANGE
+	token.draw.connect(func(): _draw_zombie_token(token, color))
+	return token
+
+func _draw_zombie_token(token: Control, color: Color) -> void:
+	var center := token.size * Vector2(0.5, 0.55)
+	_draw_zombie_silhouette(token, center, 1.0, color)
 
 func _position_survivor_tokens(map: Control) -> void:
 	for survivor in SurvivorManager.survivors:
@@ -1281,20 +1351,38 @@ func _survivor_map_token(survivor: Dictionary) -> Button:
 func _draw_survivor_icon(node: Control, survivor: Dictionary, compact: bool) -> void:
 	var size := node.size
 	var accent := _status_color(survivor)
-	var skin := Color("#c79a74")
+	var role_color := _role_color(String(survivor.get("role", "")))
+	var skin := _skin_color(int(survivor.get("id", 1)))
 	var coat := accent.darkened(0.25)
 	var outline := Color("#050607")
-	node.draw_rect(Rect2(Vector2.ZERO, size), Color(0.02, 0.024, 0.027, 0.78), true)
-	node.draw_rect(Rect2(Vector2.ZERO, size), accent.darkened(0.35), false, 1)
-	var center := size * Vector2(0.5, 0.42 if compact else 0.36)
+	var mode := String(survivor.get("control_mode", "NPC"))
+	var task := String(survivor.get("assigned_task", "Rest"))
+	var step := sin(ambient_time * (5.0 if task in ["Scavenge", "Scout"] else 2.8) + float(survivor.get("id", 1)))
+	node.draw_rect(Rect2(Vector2.ZERO, size), Color(0.02, 0.024, 0.027, 0.66), true)
+	node.draw_rect(Rect2(Vector2.ZERO, size), (BLUE if mode == "Crew" else MUTED).darkened(0.2), false, 2 if mode == "Crew" else 1)
+	var center := size * Vector2(0.5, 0.4 if compact else 0.34) + Vector2(0, step * (1.0 if compact else 1.5))
 	var head_radius := minf(size.x, size.y) * (0.18 if compact else 0.2)
+	var torso_start := center + Vector2(0, head_radius * 1.1)
+	var leg_base := torso_start + Vector2(0, size.y * (0.24 if compact else 0.3))
+	var limb_width := maxf(1.2, head_radius * 0.35)
+	node.draw_line(torso_start + Vector2(-head_radius * 0.7, head_radius), leg_base + Vector2(-head_radius * 0.9, head_radius * (1.7 + step * 0.3)), coat, limb_width)
+	node.draw_line(torso_start + Vector2(head_radius * 0.7, head_radius), leg_base + Vector2(head_radius * 0.9, head_radius * (1.7 - step * 0.3)), coat, limb_width)
+	var arm_swing := Vector2(step * head_radius * 0.6, head_radius * 1.0)
+	node.draw_line(torso_start + Vector2(-head_radius * 0.9, 0), torso_start + Vector2(-head_radius * 1.7, head_radius) - arm_swing, role_color, limb_width)
+	node.draw_line(torso_start + Vector2(head_radius * 0.9, 0), torso_start + Vector2(head_radius * 1.7, head_radius) + arm_swing, role_color, limb_width)
 	node.draw_circle(center, head_radius + 1.0, outline)
 	node.draw_circle(center, head_radius, skin)
+	if task == "Guard":
+		node.draw_rect(Rect2(center + Vector2(head_radius * 0.45, -head_radius * 0.2), Vector2(head_radius * 0.85, head_radius * 0.24)), RED, true)
 	var body_top := center + Vector2(-head_radius * 1.2, head_radius * 0.95)
 	var body_size := Vector2(head_radius * 2.4, size.y * (0.34 if compact else 0.42))
 	node.draw_rect(Rect2(body_top, body_size), coat, true)
 	node.draw_rect(Rect2(body_top, body_size), outline, false, 1)
 	_draw_role_mark(node, survivor, center + Vector2(0, body_size.y * 0.95), accent, compact)
+
+func _skin_color(id: int) -> Color:
+	var tones := [Color("#c79a74"), Color("#8f6045"), Color("#e0b084"), Color("#a87555"), Color("#d0a17a")]
+	return tones[id % tones.size()]
 
 func _draw_role_mark(node: Control, survivor: Dictionary, pos: Vector2, color: Color, compact: bool) -> void:
 	var role := String(survivor.get("role", ""))
@@ -1360,6 +1448,20 @@ func _create_panel(min_size: Vector2) -> Dictionary:
 	box.add_theme_constant_override("separation", 4)
 	margin.add_child(box)
 	return {"panel": panel, "box": box}
+
+func _map_button_style(fill: Color, border: Color) -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = fill
+	style.border_color = border
+	style.border_width_left = 1
+	style.border_width_top = 1
+	style.border_width_right = 1
+	style.border_width_bottom = 1
+	style.corner_radius_top_left = 3
+	style.corner_radius_top_right = 3
+	style.corner_radius_bottom_left = 3
+	style.corner_radius_bottom_right = 3
+	return style
 
 func _stat_chip(title: String, value: String, color: Color) -> PanelContainer:
 	var framed := _create_panel(Vector2(0, 0))
