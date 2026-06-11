@@ -12,6 +12,7 @@ static func get_data() -> Array:
 			"infection_risk": 0,
 			"assigned_task": "Rest",
 			"assigned_building": "Main Warehouse",
+			"control_mode": "Crew",
 			"status": "Healthy",
 			"traits": ["Builder", "Practical", "Good With Fixings"]
 		}

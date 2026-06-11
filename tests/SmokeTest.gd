@@ -19,6 +19,8 @@ func _run() -> void:
 	_assert_eq(ResourceManager.get_value("day_number"), 1, "new game starts on day 1")
 	_assert_eq(SurvivorManager.survivors.size(), 1, "new game starts with Billy alone")
 	_assert_eq(ResourceManager.get_value("population"), 1, "starting population is one")
+	_assert_eq(SurvivorManager.get_crew_count(), 1, "Billy starts as direct crew")
+	_assert_eq(String(GameManager.get_colony_tier().get("name", "")), "Hideout", "starting tier is hideout")
 	_assert_true(BuildingManager.buildings.size() >= 9, "starting buildings loaded")
 
 	var clear_result := GameManager.building_action(2, "Clear")
@@ -43,6 +45,17 @@ func _run() -> void:
 	_assert_true(int(depot.get("remaining", 100)) < 100, "scavenging depletes location supplies")
 	_assert_true(depot.has("cooldown"), "scavenge location tracks cooldown")
 	var depot_remaining_after_scavenge := int(depot.get("remaining", 0))
+
+	var recruit := SurvivorManager.generate_recruit()
+	SurvivorManager.invite_recruit(recruit)
+	_assert_eq(SurvivorManager.get_npc_count(), 1, "new recruits join as NPC residents")
+	var new_survivor_id := int(SurvivorManager.survivors[1]["id"])
+	var npc_order := GameManager.scavenge("Builder's Merchant", new_survivor_id)
+	_assert_true(not bool(npc_order.get("ok", false)), "NPC residents cannot be sent scavenging directly")
+	var crew_result := GameManager.set_survivor_control_mode(new_survivor_id, "Crew")
+	_assert_true(bool(crew_result.get("ok", false)), "NPC survivor can be added to direct crew within limit")
+	_assert_eq(SurvivorManager.get_crew_count(), 2, "crew count increases after promotion")
+	_assert_eq(String(GameManager.get_colony_tier().get("name", "")), "Camp", "two survivors unlock camp tier")
 
 	var preview := NightDefenseManager.get_preview()
 	_assert_true(int(preview.get("attack_strength", 0)) >= 0, "night attack preview calculates attack")

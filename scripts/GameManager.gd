@@ -4,12 +4,23 @@ signal state_changed
 signal log_changed
 signal recruit_found(recruit: Dictionary)
 signal game_over(message: String)
+signal colony_tier_changed(tier: Dictionary)
+
+const COLONY_TIERS := [
+	{"id": "hideout", "name": "Hideout", "population": 1, "buildings": 1, "reward": {"morale": 0, "security": 0}, "description": "One survivor holding one warehouse."},
+	{"id": "camp", "name": "Camp", "population": 2, "buildings": 1, "reward": {"morale": 2, "security": 1}, "description": "A small camp with enough hands to share work."},
+	{"id": "community", "name": "Community", "population": 5, "buildings": 2, "reward": {"morale": 4, "security": 3}, "description": "A proper group with roles, routines, and claimed space."},
+	{"id": "settlement", "name": "Settlement", "population": 10, "buildings": 4, "reward": {"morale": 5, "security": 5}, "description": "A defended settlement spreading across the estate."},
+	{"id": "district", "name": "District", "population": 18, "buildings": 6, "reward": {"morale": 6, "security": 7}, "description": "A reclaimed industrial district with specialised buildings."},
+	{"id": "city", "name": "City", "population": 30, "buildings": 9, "reward": {"morale": 8, "security": 10}, "description": "A survivor city built from the old estate."}
+]
 
 var event_log: Array = []
 var current_objective := "Billy is alone. Scavenge nearby units, find survivors, and build the colony."
 var pending_recruit: Dictionary = {}
 var phase := "Morning"
 var game_over_message := ""
+var colony_tier_index := 0
 
 func _ready() -> void:
 	randomize()
@@ -26,6 +37,7 @@ func new_game() -> void:
 	pending_recruit = {}
 	phase = "Morning"
 	game_over_message = ""
+	colony_tier_index = _calculate_colony_tier_index()
 	add_log("Day 1: Billy barricaded himself inside the Main Warehouse.")
 	_update_objective()
 	SaveManager.save_game(event_log)
@@ -38,7 +50,9 @@ func continue_game() -> bool:
 	event_log = Array(data.get("event_log", [])).duplicate()
 	phase = String(data.get("phase", "Morning"))
 	game_over_message = String(data.get("game_over_message", ""))
+	colony_tier_index = int(data.get("colony_tier_index", _calculate_colony_tier_index()))
 	add_log("Save loaded. Day %d continues." % ResourceManager.get_value("day_number"))
+	_update_colony_tier(false)
 	_update_objective()
 	state_changed.emit()
 	return true
@@ -57,6 +71,10 @@ func add_log(message: String) -> void:
 func assign_survivor_task(id: int, task: String) -> void:
 	if is_game_over():
 		return
+	if not SurvivorManager.is_crew(id):
+		add_log("%s is an NPC resident. Add them to the crew before giving direct orders." % SurvivorManager.get_survivor_name(id))
+		state_changed.emit()
+		return
 	SurvivorManager.assign_task(id, task)
 	ActivityManager.start_task(id, task)
 	add_log("Task assigned: %s." % task)
@@ -70,6 +88,7 @@ func building_action(id: int, action: String) -> Dictionary:
 	var result := BuildingManager.perform_action(id, action)
 	add_log(result["message"])
 	phase = "Building"
+	_update_colony_tier(true)
 	_update_objective()
 	state_changed.emit()
 	return result
@@ -107,6 +126,8 @@ func install_building_upgrade(building_id: int, upgrade_id: String) -> Dictionar
 func scavenge(location_name: String, survivor_id: int) -> Dictionary:
 	if is_game_over():
 		return {"ok": false, "message": game_over_message}
+	if not SurvivorManager.is_crew(survivor_id):
+		return {"ok": false, "message": "%s is an NPC resident. Add them to the crew before sending them outside." % SurvivorManager.get_survivor_name(survivor_id)}
 	if ActivityManager.get_job(survivor_id).get("task", "") == "Scavenge" and ActivityManager.get_job(survivor_id).get("location", "") != "":
 		return {"ok": false, "message": "%s is already outside scavenging." % SurvivorManager.get_survivor_name(survivor_id)}
 	var availability := ScavengeManager.can_scavenge(location_name)
@@ -134,6 +155,7 @@ func handle_recruit(choice: String) -> void:
 			SurvivorManager.reject_recruit(pending_recruit)
 			add_log("%s was turned away." % pending_recruit["name"])
 	pending_recruit = {}
+	_update_colony_tier(true)
 	_update_objective()
 	state_changed.emit()
 
@@ -155,6 +177,9 @@ func end_day() -> Dictionary:
 	var night := NightDefenseManager.resolve_night()
 	add_log(night["message"])
 	report.append(night["message"])
+	for message in SurvivorManager.assign_npc_routines():
+		add_log(message)
+		report.append(message)
 	for message in SurvivorManager.apply_task_effects():
 		add_log(message)
 		report.append(message)
@@ -181,6 +206,7 @@ func end_day() -> Dictionary:
 	ResourceManager.advance_day()
 	phase = "Morning"
 	_check_failure_state()
+	_update_colony_tier(true)
 	_update_objective()
 	add_log("Auto-save complete. Morning begins.")
 	SaveManager.save_game(event_log)
@@ -195,6 +221,37 @@ func reset_save_and_game() -> void:
 
 func is_game_over() -> bool:
 	return game_over_message != ""
+
+func set_survivor_control_mode(id: int, mode: String) -> Dictionary:
+	if is_game_over():
+		return {"ok": false, "message": game_over_message}
+	var result := SurvivorManager.set_control_mode(id, mode)
+	add_log(result["message"])
+	_update_colony_tier(true)
+	_update_objective()
+	state_changed.emit()
+	return result
+
+func get_colony_tier() -> Dictionary:
+	var tier: Dictionary = COLONY_TIERS[colony_tier_index]
+	return tier
+
+func get_next_colony_tier() -> Dictionary:
+	if colony_tier_index >= COLONY_TIERS.size() - 1:
+		return {}
+	var tier: Dictionary = COLONY_TIERS[colony_tier_index + 1]
+	return tier
+
+func get_colony_growth_summary() -> String:
+	var tier: Dictionary = get_colony_tier()
+	var next: Dictionary = get_next_colony_tier()
+	var population := SurvivorManager.get_population_count()
+	var buildings := BuildingManager.count_controlled_buildings()
+	var crew := SurvivorManager.get_crew_count()
+	var crew_limit := SurvivorManager.get_direct_control_limit()
+	if next.is_empty():
+		return "%s: %d survivors, %d controlled buildings, crew %d/%d. The estate has become a survivor city." % [tier["name"], population, buildings, crew, crew_limit]
+	return "%s: %d/%d survivors, %d/%d buildings, crew %d/%d toward %s." % [tier["name"], population, int(next["population"]), buildings, int(next["buildings"]), crew, crew_limit, next["name"]]
 
 func _on_activity_job_completed(_survivor_id: int, _task: String, message: String) -> void:
 	add_log(message)
@@ -211,8 +268,13 @@ func _update_objective() -> void:
 		current_objective = game_over_message
 		return
 	var r := ResourceManager.resources
+	var next_tier: Dictionary = get_next_colony_tier()
 	if SurvivorManager.get_population_count() <= 1:
 		current_objective = "Billy is alone. Scout a nearby location and look for survivors."
+	elif not next_tier.is_empty() and SurvivorManager.get_population_count() < int(next_tier["population"]):
+		current_objective = "Grow from %s to %s: recruit survivors through scavenging and radio contact." % [get_colony_tier()["name"], next_tier["name"]]
+	elif not next_tier.is_empty() and BuildingManager.count_controlled_buildings() < int(next_tier["buildings"]):
+		current_objective = "Grow from %s to %s: scout, clear, and claim more buildings." % [get_colony_tier()["name"], next_tier["name"]]
 	elif BuildingManager.count_by_status("Claimed") + BuildingManager.count_by_status("Operational") + BuildingManager.count_by_status("Fortified") < 2:
 		current_objective = "Scout, clear, and claim a second building for the colony."
 	elif int(r["food"]) < 40 or int(r["water"]) < 40:
@@ -222,7 +284,31 @@ func _update_objective() -> void:
 	elif int(r["horde_threat"]) >= 45:
 		current_objective = "Horde pressure is rising. Scout, call radio, or prepare defences."
 	else:
-		current_objective = "Expand the estate, keep morale stable, and survive the next night."
+		current_objective = get_colony_growth_summary()
+
+func _calculate_colony_tier_index() -> int:
+	var population := SurvivorManager.get_population_count()
+	var buildings := BuildingManager.count_controlled_buildings()
+	var unlocked := 0
+	for index in range(COLONY_TIERS.size()):
+		var tier: Dictionary = COLONY_TIERS[index]
+		if population >= int(tier["population"]) and buildings >= int(tier["buildings"]):
+			unlocked = index
+	return unlocked
+
+func _update_colony_tier(announce: bool) -> void:
+	var next_index := _calculate_colony_tier_index()
+	if next_index == colony_tier_index:
+		return
+	var previous_index := colony_tier_index
+	colony_tier_index = next_index
+	if announce and next_index > previous_index:
+		var tier: Dictionary = COLONY_TIERS[next_index]
+		var reward: Dictionary = tier["reward"]
+		ResourceManager.add_resource("morale", int(reward.get("morale", 0)))
+		ResourceManager.add_resource("security", int(reward.get("security", 0)))
+		add_log("Colony grew into a %s. %s" % [tier["name"], tier["description"]])
+		colony_tier_changed.emit(tier)
 
 func _check_failure_state() -> void:
 	if SurvivorManager.get_available_scavengers().is_empty():

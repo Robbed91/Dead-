@@ -39,7 +39,8 @@ func save_game(event_log: Array) -> bool:
 		"activity": ActivityManager.to_dict(),
 		"event_log": event_log,
 		"phase": GameManager.phase,
-		"game_over_message": GameManager.game_over_message
+		"game_over_message": GameManager.game_over_message,
+		"colony_tier_index": GameManager.colony_tier_index
 	}
 	var file := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
 	if file == null:

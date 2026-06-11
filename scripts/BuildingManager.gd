@@ -265,6 +265,9 @@ func count_survivable_buildings() -> int:
 			total += 1
 	return total
 
+func count_controlled_buildings() -> int:
+	return count_survivable_buildings()
+
 func _find_building(id: int) -> Dictionary:
 	for building in buildings:
 		if int(building["id"]) == id:

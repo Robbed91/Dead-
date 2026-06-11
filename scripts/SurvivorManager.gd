@@ -16,6 +16,7 @@ func _ready() -> void:
 
 func reset() -> void:
 	survivors = StartingSurvivors.get_data()
+	_normalize_survivors()
 	next_id = 1
 	for survivor in survivors:
 		next_id = max(next_id, int(survivor["id"]) + 1)
@@ -27,6 +28,54 @@ func assign_task(id: int, task: String) -> void:
 			survivor["assigned_task"] = task
 			survivors_changed.emit()
 			return
+
+func set_control_mode(id: int, mode: String) -> Dictionary:
+	if not ["Crew", "NPC"].has(mode):
+		return {"ok": false, "message": "Unknown control mode."}
+	var survivor := _find_survivor(id)
+	if survivor.is_empty() or String(survivor.get("status", "Healthy")) == "Dead":
+		return {"ok": false, "message": "Survivor not available."}
+	if mode == "Crew" and String(survivor.get("control_mode", "NPC")) != "Crew" and get_crew_count() >= get_direct_control_limit():
+		return {"ok": false, "message": "Crew limit reached. Grow the colony to control more survivors directly."}
+	if mode == "NPC" and String(survivor.get("control_mode", "NPC")) == "Crew" and get_crew_count() <= 1:
+		return {"ok": false, "message": "At least one survivor must remain in your direct crew."}
+	survivor["control_mode"] = mode
+	if mode == "NPC":
+		survivor["assigned_task"] = _npc_task_for_survivor(survivor)
+	survivors_changed.emit()
+	return {"ok": true, "message": "%s is now %s." % [survivor["name"], mode]}
+
+func is_crew(id: int) -> bool:
+	var survivor := _find_survivor(id)
+	return not survivor.is_empty() and String(survivor.get("control_mode", "NPC")) == "Crew"
+
+func get_crew_count() -> int:
+	var total := 0
+	for survivor in get_available_scavengers():
+		if String(survivor.get("control_mode", "NPC")) == "Crew":
+			total += 1
+	return total
+
+func get_npc_count() -> int:
+	return max(0, get_population_count() - get_crew_count())
+
+func get_direct_control_limit() -> int:
+	var population := get_population_count()
+	var buildings := BuildingManager.count_controlled_buildings()
+	if population >= 30 and buildings >= 9:
+		return 6
+	if population >= 18 and buildings >= 6:
+		return 5
+	if population >= 10 and buildings >= 4:
+		return 4
+	if population >= 5 and buildings >= 2:
+		return 3
+	if population >= 2:
+		return 2
+	return 1
+
+func get_crew_survivors() -> Array:
+	return get_available_scavengers().filter(func(s): return String(s.get("control_mode", "NPC")) == "Crew")
 
 func assign_building(id: int, building_name: String) -> bool:
 	for survivor in survivors:
@@ -110,6 +159,23 @@ func apply_task_effects() -> Array:
 	if scouts > 0:
 		ResourceManager.add_resource("horde_threat", -scouts)
 		messages.append("Scouts tracked horde movement: threat -%d." % scouts)
+	survivors_changed.emit()
+	return messages
+
+func assign_npc_routines() -> Array:
+	var messages: Array = []
+	var changed := 0
+	for survivor in get_available_scavengers():
+		if String(survivor.get("control_mode", "NPC")) == "Crew":
+			continue
+		var old_task := String(survivor.get("assigned_task", "Rest"))
+		var new_task := _npc_task_for_survivor(survivor)
+		if old_task != new_task:
+			survivor["assigned_task"] = new_task
+			ActivityManager.start_task(int(survivor["id"]), new_task)
+			changed += 1
+	if changed > 0:
+		messages.append("%d NPC residents took colony jobs automatically." % changed)
 	survivors_changed.emit()
 	return messages
 
@@ -213,6 +279,7 @@ func generate_recruit() -> Dictionary:
 		"infection_risk": randi_range(0, 20),
 		"assigned_task": "Rest",
 		"assigned_building": "Main Warehouse",
+		"control_mode": "NPC",
 		"status": "Waiting",
 		"traits": [TRAITS.pick_random(), TRAITS.pick_random()]
 	}
@@ -221,6 +288,8 @@ func invite_recruit(recruit: Dictionary) -> void:
 	var survivor := recruit.duplicate(true)
 	survivor["id"] = next_id
 	survivor["status"] = "Healthy"
+	survivor["control_mode"] = "NPC"
+	survivor["assigned_task"] = _npc_task_for_survivor(survivor)
 	next_id += 1
 	survivors.append(survivor)
 	ResourceManager.set_value("population", survivors.size())
@@ -239,6 +308,7 @@ func to_dict() -> Dictionary:
 
 func from_dict(data: Dictionary) -> void:
 	survivors = Array(data.get("survivors", [])).duplicate(true)
+	_normalize_survivors()
 	next_id = int(data.get("next_id", survivors.size() + 1))
 	ResourceManager.set_value("population", survivors.filter(func(s): return s.get("status", "Healthy") != "Dead").size())
 	survivors_changed.emit()
@@ -255,3 +325,33 @@ func _find_survivor(id: int) -> Dictionary:
 		if int(survivor["id"]) == id:
 			return survivor
 	return {}
+
+func _normalize_survivors() -> void:
+	var first_alive_crew_assigned := false
+	for survivor in survivors:
+		if not survivor.has("control_mode"):
+			survivor["control_mode"] = "Crew" if not first_alive_crew_assigned and String(survivor.get("status", "Healthy")) != "Dead" else "NPC"
+		if String(survivor.get("control_mode", "")) == "Crew" and String(survivor.get("status", "Healthy")) != "Dead":
+			first_alive_crew_assigned = true
+
+func _npc_task_for_survivor(survivor: Dictionary) -> String:
+	var role := String(survivor.get("role", ""))
+	if ResourceManager.get_value("food") < 35 or ResourceManager.get_value("water") < 35:
+		if ["Cook", "Farmer", "Quartermaster"].has(role):
+			return "Cook"
+		if ["Scout", "Driver", "Negotiator"].has(role):
+			return "Scout"
+	if ResourceManager.get_value("infection_risk") >= 18 or role == "Medic":
+		return "Medical"
+	if ResourceManager.get_value("security") < 55 or ResourceManager.get_value("horde_threat") >= 30:
+		if ["Guard", "Scout", "Radio Operator"].has(role):
+			return "Guard"
+	if ["Builder", "Engineer", "Mechanic", "Fabricator", "Sign Fitter"].has(role):
+		return "Build"
+	if role == "Cook":
+		return "Cook"
+	if role == "Guard":
+		return "Guard"
+	if role == "Scout":
+		return "Scout"
+	return "Rest"

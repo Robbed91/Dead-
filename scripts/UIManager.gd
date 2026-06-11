@@ -459,6 +459,8 @@ func _refresh_top_bar() -> void:
 	colony_strip.add_child(_stat_chip("SECURITY", str(r["security"]) + "%", BLUE))
 	colony_strip.add_child(_stat_chip("NOISE", str(r["noise"]) + "%", ORANGE))
 	colony_strip.add_child(_stat_chip("THREAT", _threat_label(), RED))
+	colony_strip.add_child(_stat_chip("STAGE", String(GameManager.get_colony_tier()["name"]).to_upper(), ORANGE))
+	colony_strip.add_child(_stat_chip("CREW", "%d/%d" % [SurvivorManager.get_crew_count(), SurvivorManager.get_direct_control_limit()], BLUE))
 	var day_label := find_child("day_value", true, false)
 	if day_label != null:
 		day_label.text = str(r["day_number"])
@@ -466,7 +468,7 @@ func _refresh_top_bar() -> void:
 		phase_label.text = GameManager.phase.to_upper()
 
 func _refresh_alerts() -> void:
-	objective_body.text = GameManager.current_objective
+	objective_body.text = "%s\n%s" % [GameManager.current_objective, GameManager.get_colony_growth_summary()]
 	_clear(alerts_box)
 	var r := ResourceManager.resources
 	var alerts: Array = []
@@ -507,7 +509,9 @@ func _refresh_survivors() -> void:
 		var job_suffix := ""
 		if String(job.get("location", "")) != "":
 			job_suffix = " @ %s" % String(job["location"])
-		details.add_child(_label("%s  HP %s%%  INF %s%%" % [survivor["name"], survivor["health"], survivor["infection_risk"]], 12, TEXT))
+		var mode := String(survivor.get("control_mode", "NPC"))
+		var mode_color := BLUE if mode == "Crew" else MUTED
+		details.add_child(_label("%s  %s  HP %s%%  INF %s%%" % [survivor["name"], mode.to_upper(), survivor["health"], survivor["infection_risk"]], 12, mode_color))
 		details.add_child(_label("%s - %s - %s%s" % [survivor["role"], survivor["status"], survivor["assigned_task"], job_suffix], 9, MUTED))
 		var progress := ProgressBar.new()
 		progress.custom_minimum_size = Vector2(0, 8)
@@ -515,7 +519,7 @@ func _refresh_survivors() -> void:
 		progress.value = ActivityManager.get_progress(int(survivor["id"]))
 		progress.show_percentage = false
 		details.add_child(progress)
-		var task := _small_button("Assign")
+		var task := _small_button("Assign" if mode == "Crew" else "NPC")
 		task.custom_minimum_size = Vector2(58, 34)
 		task.pressed.connect(_show_task_popup.bind(int(survivor["id"])))
 		row.add_child(task)
@@ -718,12 +722,13 @@ func _build_building_commands() -> void:
 	command_body.add_child(set_use)
 	var survivor_select := OptionButton.new()
 	survivor_select.custom_minimum_size = Vector2(140, 54)
-	for survivor in SurvivorManager.get_available_scavengers():
+	var crew_survivors := SurvivorManager.get_crew_survivors()
+	for survivor in crew_survivors:
 		survivor_select.add_item(String(survivor["name"]), int(survivor["id"]))
 		if int(survivor["id"]) == int(selected_building_survivor.get(id, -1)):
 			survivor_select.select(survivor_select.get_item_count() - 1)
-	if not SurvivorManager.get_available_scavengers().is_empty() and not selected_building_survivor.has(id):
-		selected_building_survivor[id] = int(SurvivorManager.get_available_scavengers()[0]["id"])
+	if not crew_survivors.is_empty() and not selected_building_survivor.has(id):
+		selected_building_survivor[id] = int(crew_survivors[0]["id"])
 	survivor_select.item_selected.connect(_on_building_survivor_selected.bind(survivor_select, id))
 	command_body.add_child(survivor_select)
 	var assign := _small_button("ASSIGN")
@@ -742,7 +747,10 @@ func _build_survivor_commands() -> void:
 func _build_scavenge_commands() -> void:
 	var selector := OptionButton.new()
 	selector.custom_minimum_size = Vector2(150, 54)
-	for survivor in SurvivorManager.get_available_scavengers():
+	var crew_survivors := SurvivorManager.get_crew_survivors()
+	if not crew_survivors.is_empty() and not _is_selected_scavenger_crew():
+		selected_scavenger_id = int(crew_survivors[0]["id"])
+	for survivor in crew_survivors:
 		selector.add_item(String(survivor["name"]), int(survivor["id"]))
 		if int(survivor["id"]) == selected_scavenger_id:
 			selector.select(selector.get_item_count() - 1)
@@ -829,9 +837,9 @@ func _on_building_survivor_selected(index: int, selector: OptionButton, building
 	selected_building_survivor[building_id] = selector.get_item_id(index)
 
 func _on_assign_survivor_to_building(building_id: int) -> void:
-	var survivors := SurvivorManager.get_available_scavengers()
+	var survivors := SurvivorManager.get_crew_survivors()
 	if survivors.is_empty():
-		_show_result("No survivors available.")
+		_show_result("No crew survivors available.")
 		return
 	var survivor_id := int(selected_building_survivor.get(building_id, int(survivors[0]["id"])))
 	_show_result(GameManager.assign_survivor_to_building(building_id, survivor_id)["message"])
@@ -941,6 +949,9 @@ func _show_defence_popup() -> void:
 	footer.add_child(close)
 
 func _show_scavenge_popup() -> void:
+	var crew_survivors := SurvivorManager.get_crew_survivors()
+	if not crew_survivors.is_empty() and not _is_selected_scavenger_crew():
+		selected_scavenger_id = int(crew_survivors[0]["id"])
 	var box := _show_modal("Scout Locations", Vector2(660, 470))
 	var selected_name := SurvivorManager.get_survivor_name(selected_scavenger_id)
 	var help := _label("Selected survivor: %s. Pick a location to search now, or open the full Scavenge tab to change survivor." % selected_name, 14, TEXT)
@@ -1073,6 +1084,12 @@ func _run_scavenge_from_modal(location_name: String) -> void:
 	var result: Dictionary = GameManager.scavenge(location_name, selected_scavenger_id)
 	_show_result(String(result["message"]))
 
+func _is_selected_scavenger_crew() -> bool:
+	for survivor in SurvivorManager.get_crew_survivors():
+		if int(survivor["id"]) == selected_scavenger_id:
+			return true
+	return false
+
 func _confirm_reset_save() -> void:
 	var dialog := ConfirmationDialog.new()
 	dialog.title = "Reset Save"
@@ -1088,21 +1105,37 @@ func _confirm_reset_save() -> void:
 
 func _show_task_popup(survivor_id: int) -> void:
 	var dialog := AcceptDialog.new()
-	dialog.title = "Assign Survivor"
-	dialog.dialog_text = "Choose a task for %s." % SurvivorManager.get_survivor_name(survivor_id)
+	var survivor_name := SurvivorManager.get_survivor_name(survivor_id)
+	var is_crew := SurvivorManager.is_crew(survivor_id)
+	dialog.title = "Manage Survivor"
+	dialog.dialog_text = "%s is %s.\nCrew are directly controlled. NPC residents choose useful colony jobs automatically." % [survivor_name, "in your crew" if is_crew else "an NPC resident"]
 	add_child(dialog)
-	for task in SurvivorManager.TASKS:
-		dialog.add_button(task, false, task)
+	if is_crew:
+		for task in SurvivorManager.TASKS:
+			dialog.add_button(task, false, task)
+		dialog.add_button("Set As NPC", false, "__npc")
+	else:
+		dialog.add_button("Add To Crew", false, "__crew")
+		dialog.add_button("Keep NPC", false, "__close")
 	dialog.custom_action.connect(func(action: StringName):
-		GameManager.assign_survivor_task(survivor_id, String(action))
+		var action_text := String(action)
+		match action_text:
+			"__crew":
+				_show_result(String(GameManager.set_survivor_control_mode(survivor_id, "Crew")["message"]))
+			"__npc":
+				_show_result(String(GameManager.set_survivor_control_mode(survivor_id, "NPC")["message"]))
+			"__close":
+				pass
+			_:
+				GameManager.assign_survivor_task(survivor_id, action_text)
 		dialog.queue_free()
 	)
-	dialog.popup_centered(Vector2(380, 260))
+	dialog.popup_centered(Vector2(460, 320))
 
 func _show_recruit_popup(recruit: Dictionary) -> void:
 	var dialog := AcceptDialog.new()
 	dialog.title = "Survivor Found"
-	dialog.dialog_text = "%s, %s\nHealth %d  Infection %d%%" % [recruit["name"], recruit["role"], recruit["health"], recruit["infection_risk"]]
+	dialog.dialog_text = "%s, %s\nHealth %d  Infection %d%%\nInvited survivors join as NPC residents. Add them to Crew if you want direct control." % [recruit["name"], recruit["role"], recruit["health"], recruit["infection_risk"]]
 	add_child(dialog)
 	dialog.add_button("Invite", false, "Invite")
 	dialog.add_button("Quarantine", false, "Quarantine")
