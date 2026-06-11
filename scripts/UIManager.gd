@@ -14,6 +14,7 @@ const BLUE := Color("#4aa3df")
 const YELLOW := Color("#d9aa38")
 const TEXT := Color("#e8e0d2")
 const MUTED := Color("#91a0a6")
+const ESTATE_BACKGROUND := preload("res://assets/placeholders/estate_background.png")
 
 const BUILDING_LAYOUT := {
 	"Main Warehouse": Rect2(0.36, 0.34, 0.25, 0.24),
@@ -312,19 +313,21 @@ func _estate_board() -> PanelContainer:
 func _draw_estate_map(map: Control) -> void:
 	var size := map.size
 	map.draw_rect(Rect2(Vector2.ZERO, size), Color("#101519"), true)
-	map.draw_rect(Rect2(Vector2(0, size.y * 0.04), Vector2(size.x, 12)), Color("#25313a"), true)
-	map.draw_rect(Rect2(Vector2(0, size.y * 0.9), Vector2(size.x, 14)), Color("#303a40"), true)
+	map.draw_texture_rect(ESTATE_BACKGROUND, Rect2(Vector2.ZERO, size), false, Color(0.92, 0.92, 0.92, 0.82))
+	map.draw_rect(Rect2(Vector2.ZERO, size), Color(0.0, 0.0, 0.0, 0.18), true)
+	map.draw_rect(Rect2(Vector2(0, size.y * 0.04), Vector2(size.x, 12)), Color(0.145, 0.192, 0.227, 0.65), true)
+	map.draw_rect(Rect2(Vector2(0, size.y * 0.9), Vector2(size.x, 14)), Color(0.188, 0.227, 0.251, 0.65), true)
 	for i in range(9):
 		var y := size.y * (0.12 + float(i) * 0.095)
-		map.draw_line(Vector2(0, y), Vector2(size.x, y + sin(i) * 18), Color("#202a30"), 3)
+		map.draw_line(Vector2(0, y), Vector2(size.x, y + sin(i) * 18), Color(0.125, 0.165, 0.188, 0.28), 2)
 	for i in range(7):
 		var x := size.x * (0.08 + float(i) * 0.14)
-		map.draw_line(Vector2(x, 0), Vector2(x + cos(i) * 20, size.y), Color("#1c252b"), 3)
-	map.draw_circle(size * Vector2(0.48, 0.5), 24, Color("#d77725"))
-	map.draw_circle(size * Vector2(0.48, 0.5), 15, Color("#34210c"))
+		map.draw_line(Vector2(x, 0), Vector2(x + cos(i) * 20, size.y), Color(0.11, 0.145, 0.169, 0.24), 2)
+	map.draw_circle(size * Vector2(0.48, 0.5), 24, Color(0.843, 0.467, 0.145, 0.65))
+	map.draw_circle(size * Vector2(0.48, 0.5), 15, Color(0.204, 0.129, 0.047, 0.75))
 	for i in range(18):
 		var pos := Vector2(fmod(float(i * 73), size.x), fmod(float(i * 47 + 31), size.y))
-		map.draw_circle(pos, 2.0, Color(0.898, 0.608, 0.251, 0.7))
+		map.draw_circle(pos, 2.0, Color(0.898, 0.608, 0.251, 0.45))
 	var threat_count := clamp(int(ResourceManager.get_value("horde_threat") / 6), 2, 13)
 	for i in range(threat_count):
 		var wave := sin(ambient_time * 1.4 + i)
@@ -333,10 +336,10 @@ func _draw_estate_map(map: Control) -> void:
 		map.draw_line(pos + Vector2(-3, 5), pos + Vector2(3, 5), RED.darkened(0.25), 2)
 	for building in BuildingManager.buildings:
 		var rect := _building_rect(map, building)
-		var color := _building_color(building).darkened(0.35)
-		map.draw_rect(rect.grow(3), Color(0.02, 0.024, 0.027, 0.8), true)
-		map.draw_rect(rect, color, true)
-		map.draw_rect(rect, Color(0.471, 0.518, 0.553, 0.55), false, 1)
+		var color := _building_color(building).darkened(0.15)
+		map.draw_rect(rect.grow(3), Color(0.02, 0.024, 0.027, 0.32), true)
+		map.draw_rect(rect, Color(color.r, color.g, color.b, 0.28), true)
+		map.draw_rect(rect, Color(0.82, 0.88, 0.91, 0.78), false, 2)
 		_draw_building_detail(map, building, rect)
 
 func _draw_building_detail(map: Control, building: Dictionary, rect: Rect2) -> void:
