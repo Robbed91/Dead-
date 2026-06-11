@@ -1352,9 +1352,10 @@ func _show_task_popup(survivor_id: int) -> void:
 	box.add_child(intro)
 	if is_crew:
 		for task in SurvivorManager.TASKS:
-			var task_button := _small_button(task.to_upper())
+			var task_name: String = String(task)
+			var task_button := _small_button(task_name.to_upper())
 			task_button.custom_minimum_size = Vector2(0, 40)
-			task_button.pressed.connect(func(task_name := task):
+			task_button.pressed.connect(func():
 				GameManager.assign_survivor_task(survivor_id, task_name)
 				_dismiss_modal()
 				_refresh()
@@ -1391,9 +1392,10 @@ func _show_recruit_popup(recruit: Dictionary) -> void:
 	row.add_theme_constant_override("separation", 8)
 	box.add_child(row)
 	for action in ["Invite", "Quarantine", "Reject"]:
-		var button := _small_button(action.to_upper())
+		var choice: String = String(action)
+		var button := _small_button(choice.to_upper())
 		button.custom_minimum_size = Vector2(0, 46)
-		button.pressed.connect(func(choice := action):
+		button.pressed.connect(func():
 			GameManager.handle_recruit(choice)
 			_dismiss_modal()
 			_refresh()
