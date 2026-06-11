@@ -31,7 +31,7 @@ func reset() -> void:
 		"infection_risk": 5,
 		"noise": 4,
 		"horde_threat": 0,
-		"beds": 6,
+		"beds": 2,
 		"population": 1,
 		"day_number": 1
 	}

@@ -7,7 +7,7 @@ const RED := Color("#b9382f")
 const GREEN := Color("#70b86b")
 const TEXT := Color("#e8e0d2")
 const MUTED := Color("#9aa4aa")
-const MENU_BACKGROUND := preload("res://assets/placeholders/menu_background.png")
+const MENU_BACKGROUND := preload("res://assets/backgrounds/main_menu.png")
 
 var continue_button: Button
 var backdrop_layer: Control

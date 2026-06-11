@@ -38,7 +38,7 @@ func new_game() -> void:
 	phase = "Morning"
 	game_over_message = ""
 	colony_tier_index = _calculate_colony_tier_index()
-	add_log("Day 1: Billy barricaded himself inside the Main Warehouse.")
+	add_log("Day 1: Billy barricaded himself inside his workshop.")
 	_update_objective()
 	SaveManager.save_game(event_log)
 	state_changed.emit()

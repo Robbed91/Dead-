@@ -14,7 +14,12 @@ const BLUE := Color("#4aa3df")
 const YELLOW := Color("#d9aa38")
 const TEXT := Color("#e8e0d2")
 const MUTED := Color("#91a0a6")
-const ESTATE_BACKGROUND := preload("res://assets/placeholders/estate_background.png")
+const HIDEOUT_BACKGROUND := preload("res://assets/backgrounds/hideout.png")
+const CAMP_BACKGROUND := preload("res://assets/backgrounds/camp.png")
+const COMMUNITY_BACKGROUND := preload("res://assets/backgrounds/community.png")
+const SETTLEMENT_BACKGROUND := preload("res://assets/backgrounds/settlement.png")
+const DISTRICT_BACKGROUND := preload("res://assets/backgrounds/district.png")
+const CITY_BACKGROUND := preload("res://assets/backgrounds/city.png")
 
 const BUILDING_LAYOUT := {
 	"Main Warehouse": Rect2(0.36, 0.34, 0.25, 0.24),
@@ -26,6 +31,18 @@ const BUILDING_LAYOUT := {
 	"Food Distribution Unit": Rect2(0.69, 0.52, 0.19, 0.19),
 	"Self-Storage Units": Rect2(0.29, 0.62, 0.21, 0.18),
 	"Office Block": Rect2(0.55, 0.63, 0.17, 0.2),
+}
+
+const HIDEOUT_LAYOUT := {
+	"Main Warehouse": Rect2(0.24, 0.34, 0.25, 0.24),
+	"Signage Workshop": Rect2(0.55, 0.25, 0.07, 0.08),
+	"Builder's Merchant": Rect2(0.16, 0.68, 0.07, 0.08),
+	"Pharmacy": Rect2(0.71, 0.38, 0.07, 0.08),
+	"Garage": Rect2(0.12, 0.28, 0.07, 0.08),
+	"Security Office": Rect2(0.52, 0.12, 0.07, 0.08),
+	"Food Distribution Unit": Rect2(0.79, 0.61, 0.07, 0.08),
+	"Self-Storage Units": Rect2(0.43, 0.74, 0.07, 0.08),
+	"Office Block": Rect2(0.66, 0.73, 0.07, 0.08),
 }
 
 var active_tab := "Buildings"
@@ -180,16 +197,11 @@ func _build_left_panel(left: VBoxContainer) -> void:
 
 	var map := _add_panel(left, Vector2(0, 140))
 	map.add_child(_label("ESTATE MAP", 13, TEXT))
-	var grid := GridContainer.new()
-	grid.columns = 4
-	grid.add_theme_constant_override("h_separation", 5)
-	grid.add_theme_constant_override("v_separation", 5)
+	var grid := Control.new()
+	grid.custom_minimum_size = Vector2(0, 82)
+	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	grid.draw.connect(_draw_estate_minimap.bind(grid))
 	map.add_child(grid)
-	for i in range(12):
-		var tile := ColorRect.new()
-		tile.custom_minimum_size = Vector2(42, 22)
-		tile.color = GREEN.darkened(0.25) if i in [2, 4, 7] else (RED.darkened(0.1) if i in [5, 10] else PANEL_LIGHT)
-		grid.add_child(tile)
 	var scout := _small_button("SCOUT LOCATION")
 	scout.pressed.connect(_show_scavenge_popup)
 	map.add_child(scout)
@@ -348,7 +360,8 @@ func _estate_board() -> PanelContainer:
 func _draw_estate_map(map: Control) -> void:
 	var size := map.size
 	map.draw_rect(Rect2(Vector2.ZERO, size), Color("#101519"), true)
-	map.draw_texture_rect(ESTATE_BACKGROUND, Rect2(Vector2.ZERO, size), false, Color(0.96, 0.96, 0.96, 0.94))
+	var background := _stage_background()
+	map.draw_texture_rect(background, Rect2(Vector2.ZERO, size), false, Color(0.96, 0.96, 0.96, 0.94))
 	map.draw_rect(Rect2(Vector2.ZERO, size), Color(0.0, 0.0, 0.0, 0.12), true)
 	_draw_growth_perimeter(map)
 	var fire_pulse := 0.72 + (sin(ambient_time * 6.0) + 1.0) * 0.12
@@ -365,6 +378,9 @@ func _draw_estate_map(map: Control) -> void:
 		_draw_zombie_silhouette(map, pos, 0.75, RED.darkened(0.15))
 	for building in BuildingManager.buildings:
 		var rect := _building_rect(map, building)
+		if _is_expansion_marker(building):
+			_draw_expansion_marker(map, building, rect)
+			continue
 		var color := _building_color(building).darkened(0.15)
 		map.draw_rect(rect.grow(3), Color(0.02, 0.024, 0.027, 0.32), true)
 		map.draw_rect(rect, Color(color.r, color.g, color.b, 0.28), true)
@@ -390,6 +406,14 @@ func _draw_building_detail(map: Control, building: Dictionary, rect: Rect2) -> v
 		_draw_map_light(map, lamp, 5.0 + pulse * 3.0, ORANGE)
 	if String(building.get("status", "")) == "Infested":
 		_draw_zombie_silhouette(map, rect.position + rect.size * Vector2(0.78, 0.68), 0.75, RED)
+
+func _draw_expansion_marker(map: Control, building: Dictionary, rect: Rect2) -> void:
+	var pulse := 0.55 + (sin(ambient_time * 2.8 + float(building.get("id", 0))) + 1.0) * 0.15
+	var center := rect.position + rect.size * 0.5
+	var color := BLUE if String(building.get("status", "")) == "Scouted" else MUTED
+	map.draw_circle(center, 18.0, Color(0.0, 0.0, 0.0, 0.52))
+	map.draw_circle(center, 13.0 + pulse * 2.0, Color(color.r, color.g, color.b, 0.32))
+	map.draw_circle(center, 4.0, color)
 
 func _draw_growth_perimeter(map: Control) -> void:
 	var size := map.size
@@ -450,6 +474,26 @@ func _use_icon_color(use_name: String) -> Color:
 			return TEXT
 	return MUTED
 
+func _draw_estate_minimap(node: Control) -> void:
+	var size := node.size
+	node.draw_rect(Rect2(Vector2.ZERO, size), Color("#0a0f13"), true)
+	node.draw_rect(Rect2(Vector2.ZERO, size), Color("#34404a"), false, 1)
+	var points := [
+		Vector2(0.18, 0.45), Vector2(0.35, 0.3), Vector2(0.55, 0.36),
+		Vector2(0.74, 0.25), Vector2(0.25, 0.7), Vector2(0.48, 0.66),
+		Vector2(0.68, 0.72), Vector2(0.84, 0.56), Vector2(0.1, 0.18)
+	]
+	for i in range(points.size()):
+		var building: Dictionary = BuildingManager.buildings[i]
+		var pos := Vector2(points[i].x * size.x, points[i].y * size.y)
+		var color := _building_color(building)
+		var radius := 5.0 if String(building.get("status", "")) == "Unknown" else 7.0
+		node.draw_circle(pos, radius + 4.0, Color(0, 0, 0, 0.45))
+		node.draw_circle(pos, radius, color)
+		if i > 0:
+			var prev := Vector2(points[i - 1].x * size.x, points[i - 1].y * size.y)
+			node.draw_line(prev, pos, Color("#3b454e"), 1)
+
 func _draw_map_bar(map: Control, pos: Vector2, width: float, value: float, color: Color) -> void:
 	map.draw_rect(Rect2(pos, Vector2(width, 3)), Color("#060809"), true)
 	map.draw_rect(Rect2(pos, Vector2(width * value, 3)), color, true)
@@ -460,13 +504,38 @@ func _position_building_buttons(map: Control) -> void:
 		if not building_buttons.has(id):
 			continue
 		var button: Button = building_buttons[id]
+		button.text = _building_button_text(building)
+		button.add_theme_font_size_override("font_size", 12 if not _is_expansion_marker(building) else 18)
 		var rect := _building_rect(map, building).grow(-4)
 		button.position = rect.position
 		button.size = rect.size
 
 func _building_rect(map: Control, building: Dictionary) -> Rect2:
-	var layout: Rect2 = BUILDING_LAYOUT.get(String(building["name"]), Rect2(0.4, 0.4, 0.16, 0.16))
+	var layouts := HIDEOUT_LAYOUT if GameManager.colony_tier_index == 0 else BUILDING_LAYOUT
+	var layout: Rect2 = layouts.get(String(building["name"]), Rect2(0.4, 0.4, 0.16, 0.16))
 	return Rect2(Vector2(layout.position.x * map.size.x, layout.position.y * map.size.y), Vector2(layout.size.x * map.size.x, layout.size.y * map.size.y))
+
+func _stage_background() -> Texture2D:
+	match GameManager.colony_tier_index:
+		0:
+			return HIDEOUT_BACKGROUND
+		1:
+			return CAMP_BACKGROUND
+		2:
+			return COMMUNITY_BACKGROUND
+		3:
+			return SETTLEMENT_BACKGROUND
+		4:
+			return DISTRICT_BACKGROUND
+		_:
+			return CITY_BACKGROUND
+
+func _is_expansion_marker(building: Dictionary) -> bool:
+	if GameManager.colony_tier_index >= 2:
+		return false
+	if String(building.get("status", "")) in ["Claimed", "Operational", "Fortified"]:
+		return false
+	return String(building.get("status", "")) in ["Unknown", "Scouted", "Infested", "Cleared"]
 
 func _connect_signals() -> void:
 	GameManager.state_changed.connect(_refresh)
@@ -730,7 +799,7 @@ func _refresh_selected_building() -> void:
 	for upgrade_id in upgrades:
 		upgrade_names.append(BuildingManager.get_upgrade_name(String(upgrade_id)))
 	var upgrade_text := "None" if upgrade_names.is_empty() else ", ".join(upgrade_names)
-	selected_building_label.text = "%s\n%s | %s\nCond %d  Sec %d  Inf %d\nUpgrades: %s" % [building["name"], building["status"], building["current_use"], building["condition"], building["security"], building["infestation"], upgrade_text]
+	selected_building_label.text = "%s\n%s | %s\nCond %d  Sec %d  Inf %d\nUpgrades: %s" % [_building_display_name(building), building["status"], building["current_use"], building["condition"], building["security"], building["infestation"], upgrade_text]
 
 func _refresh_night_preview() -> void:
 	if night_preview_label == null:
@@ -936,7 +1005,7 @@ func _show_build_popup() -> void:
 		close_empty.pressed.connect(_dismiss_modal)
 		box.add_child(close_empty)
 		return
-	var summary := _label("%s\n%s | %s | condition %d | security %d | infestation %d" % [building["name"], building["status"], building["current_use"], building["condition"], building["security"], building["infestation"]], 14, TEXT, HORIZONTAL_ALIGNMENT_CENTER)
+	var summary := _label("%s\n%s | %s | condition %d | security %d | infestation %d" % [_building_display_name(building), building["status"], building["current_use"], building["condition"], building["security"], building["infestation"]], 14, TEXT, HORIZONTAL_ALIGNMENT_CENTER)
 	summary.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	box.add_child(summary)
 
@@ -1243,8 +1312,17 @@ func _selected_building() -> Dictionary:
 	return {}
 
 func _building_button_text(building: Dictionary) -> String:
+	if _is_expansion_marker(building):
+		if String(building.get("status", "")) == "Unknown":
+			return "?"
+		return "!\n%s" % String(building.get("status", ""))
 	var assigned := Array(building.get("assigned_survivors", []))
-	return "%s\n%s  %d/%d" % [building["name"], building["status"], assigned.size(), int(building.get("capacity", 0))]
+	return "%s\n%s  %d/%d" % [_building_display_name(building), building["status"], assigned.size(), int(building.get("capacity", 0))]
+
+func _building_display_name(building: Dictionary) -> String:
+	if GameManager.colony_tier_index == 0 and String(building.get("name", "")) == "Main Warehouse":
+		return "Billy's Workshop"
+	return String(building.get("name", "Unknown"))
 
 func _can_building_action(building: Dictionary, action: String) -> bool:
 	match action:

@@ -23,6 +23,8 @@ func _run() -> void:
 	_assert_eq(String(GameManager.get_colony_tier().get("name", "")), "Hideout", "starting tier is hideout")
 	_assert_true(BuildingManager.buildings.size() >= 9, "starting buildings loaded")
 
+	var scout_result := GameManager.building_action(2, "Scout")
+	_assert_true(bool(scout_result.get("ok", false)), "can scout unknown Signage Workshop")
 	var clear_result := GameManager.building_action(2, "Clear")
 	_assert_true(bool(clear_result.get("ok", false)), "can clear scouted Signage Workshop")
 	var claim_result := GameManager.building_action(2, "Claim")
