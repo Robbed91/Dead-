@@ -26,6 +26,8 @@ Dead Shift is a Godot 4 mobile Android prototype for a 2D zombie survival colony
 - End Day shows a compact night report covering combat, survivor jobs, building bonuses, events, scavenging recovery, rations, and auto-save.
 - Consume food and water, update morale and threat, auto-save, and advance the day.
 - Continue from `user://dead_shift_save.json`.
+- Main menu shows the local save summary and disables Continue when no save exists.
+- Settings are stored separately in `user://dead_shift_settings.json`.
 
 ## Project Structure
 
@@ -88,7 +90,7 @@ A headless smoke test checks the core loop managers without manual clicking:
 Godot_v4.6.3-stable_win64.exe --headless --path . -s tests/SmokeTest.gd
 ```
 
-It starts a new game, claims a building, installs an upgrade, starts and completes a scavenge job, checks location depletion/recovery, checks survivor condition progression, prepares a named defence tactic, previews night defence, saves, reloads, and ends the day. The test backs up and restores any existing `user://dead_shift_save.json`.
+It starts a new game, claims a building, installs an upgrade, starts and completes a scavenge job, checks location depletion/recovery, checks survivor condition progression, prepares a named defence tactic, previews night defence, saves, checks save summaries/settings persistence, reloads, and ends the day. The test backs up and restores any existing `user://dead_shift_save.json` and `user://dead_shift_settings.json`.
 
 ## Android Landscape Orientation
 
@@ -171,11 +173,13 @@ In game:
 
 1. Open **Settings** from the main menu.
 2. Press **Reset Save**.
+3. Confirm the reset prompt.
 
 The save file uses Godot's user path:
 
 ```text
 user://dead_shift_save.json
+user://dead_shift_settings.json
 ```
 
 On desktop test runs, the exact folder is platform-specific and can be inspected in Godot with `ProjectSettings.globalize_path("user://")`.

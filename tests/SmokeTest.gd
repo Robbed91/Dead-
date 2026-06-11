@@ -1,10 +1,13 @@
 extends SceneTree
 
 const SAVE_PATH := "user://dead_shift_save.json"
+const SETTINGS_PATH := "user://dead_shift_settings.json"
 
 var failures: Array = []
 var had_save := false
 var save_backup := ""
+var had_settings := false
+var settings_backup := ""
 
 func _init() -> void:
 	call_deferred("_run")
@@ -60,6 +63,12 @@ func _run() -> void:
 
 	var food_before_save := ResourceManager.get_value("food")
 	_assert_true(SaveManager.save_game(GameManager.event_log), "save file can be written")
+	var summary := SaveManager.get_save_summary()
+	_assert_eq(int(summary.get("day_number", 0)), ResourceManager.get_value("day_number"), "save summary reports current day")
+	_assert_true(SaveManager.save_settings({"sound_enabled": false}), "settings file can be written")
+	_assert_true(not SaveManager.is_sound_enabled(), "sound setting persists false value")
+	_assert_true(SaveManager.save_settings({"sound_enabled": true}), "settings can be changed back")
+	_assert_true(SaveManager.is_sound_enabled(), "sound setting persists true value")
 	ResourceManager.set_value("food", 1)
 	var loaded := SaveManager.load_game()
 	_assert_true(not loaded.is_empty(), "save file can be loaded")
@@ -93,21 +102,33 @@ func _backup_save() -> void:
 	had_save = FileAccess.file_exists(SAVE_PATH)
 	if not had_save:
 		save_backup = ""
-		return
-	var file := FileAccess.open(SAVE_PATH, FileAccess.READ)
-	if file != null:
-		save_backup = file.get_as_text()
+	else:
+		var file := FileAccess.open(SAVE_PATH, FileAccess.READ)
+		if file != null:
+			save_backup = file.get_as_text()
+	had_settings = FileAccess.file_exists(SETTINGS_PATH)
+	if had_settings:
+		var settings_file := FileAccess.open(SETTINGS_PATH, FileAccess.READ)
+		if settings_file != null:
+			settings_backup = settings_file.get_as_text()
 
 func _restore_save() -> void:
 	if had_save:
 		var file := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
 		if file != null:
 			file.store_string(save_backup)
-		return
-	if FileAccess.file_exists(SAVE_PATH):
+	elif FileAccess.file_exists(SAVE_PATH):
 		var dir := DirAccess.open("user://")
 		if dir != null:
 			dir.remove("dead_shift_save.json")
+	if had_settings:
+		var settings_file := FileAccess.open(SETTINGS_PATH, FileAccess.WRITE)
+		if settings_file != null:
+			settings_file.store_string(settings_backup)
+	elif FileAccess.file_exists(SETTINGS_PATH):
+		var dir_settings := DirAccess.open("user://")
+		if dir_settings != null:
+			dir_settings.remove("dead_shift_settings.json")
 
 func _location(location_name: String) -> Dictionary:
 	for location in ScavengeManager.locations:

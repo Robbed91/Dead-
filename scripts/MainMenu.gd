@@ -9,6 +9,8 @@ const TEXT := Color("#e8e0d2")
 const MUTED := Color("#9aa4aa")
 const MENU_BACKGROUND := preload("res://assets/placeholders/menu_background.png")
 
+var continue_button: Button
+
 func _ready() -> void:
 	_build_theme()
 	_build_menu()
@@ -93,7 +95,7 @@ func _build_menu() -> void:
 	root.add_child(center)
 
 	_add_button(center, "NEW GAME", _new_game, ORANGE)
-	_add_button(center, "CONTINUE", _continue_game, GREEN)
+	continue_button = _add_button(center, "CONTINUE", _continue_game, GREEN)
 	_add_button(center, "COLONY MODE", _new_game, MUTED)
 	_add_button(center, "SETTINGS", _settings, MUTED)
 	_add_button(center, "EXIT", _quit, RED)
@@ -107,7 +109,13 @@ func _build_menu() -> void:
 	signal.add_child(_label("STAY ALERT.", 18, TEXT))
 	signal.add_child(_label("STAY TOGETHER.", 18, TEXT))
 	signal.add_child(_label("STAY ALIVE.", 18, GREEN))
-	signal.add_child(_label("Willowgate Industrial Estate\nUnit 7B lockdown active", 12, MUTED))
+	var summary := SaveManager.get_save_summary()
+	var save_text := "No local save found."
+	if not summary.is_empty():
+		save_text = "Continue: Day %d\nPopulation %d | Morale %d%% | Security %d%%" % [summary["day_number"], summary["population"], summary["morale"], summary["security"]]
+	signal.add_child(_label("Willowgate Industrial Estate\nUnit 7B lockdown active\n%s" % save_text, 12, MUTED))
+	if continue_button != null:
+		continue_button.disabled = summary.is_empty()
 
 func _draw_backdrop(node: Control) -> void:
 	var size := node.size
@@ -129,7 +137,7 @@ func _draw_backdrop(node: Control) -> void:
 	node.draw_rect(Rect2(Vector2(size.x * 0.73, size.y * 0.34), Vector2(size.x * 0.2, size.y * 0.23)), Color("#1b2026"), true)
 	node.draw_rect(Rect2(Vector2(size.x * 0.73, size.y * 0.34), Vector2(size.x * 0.2, size.y * 0.23)), RED.darkened(0.25), false, 2)
 
-func _add_button(parent: VBoxContainer, text: String, callback: Callable, accent: Color) -> void:
+func _add_button(parent: VBoxContainer, text: String, callback: Callable, accent: Color) -> Button:
 	var button := Button.new()
 	button.text = text
 	button.custom_minimum_size = Vector2(0, 54)
@@ -138,6 +146,7 @@ func _add_button(parent: VBoxContainer, text: String, callback: Callable, accent
 	button.add_theme_color_override("font_color", accent.lightened(0.15))
 	button.pressed.connect(callback)
 	parent.add_child(button)
+	return button
 
 func _panel(parent: Container) -> VBoxContainer:
 	var panel := PanelContainer.new()
