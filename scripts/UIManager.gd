@@ -383,8 +383,8 @@ func _estate_board() -> PanelContainer:
 		building_buttons[int(building["id"])] = button
 	for survivor in SurvivorManager.survivors:
 		var token := _survivor_map_token(survivor)
-		token.custom_minimum_size = Vector2(22, 22)
-		token.size = Vector2(22, 22)
+		token.custom_minimum_size = Vector2(32, 38)
+		token.size = Vector2(32, 38)
 		token.tooltip_text = "%s - %s" % [survivor["name"], survivor["assigned_task"]]
 		token.pressed.connect(_show_task_popup.bind(int(survivor["id"])))
 		map.add_child(token)
@@ -423,9 +423,15 @@ func _draw_estate_map(map: Control) -> void:
 
 func _draw_building_detail(map: Control, building: Dictionary, rect: Rect2) -> void:
 	var type_color := _building_type_color(String(building.get("type", "")))
-	var roof := Rect2(rect.position + Vector2(0, 3), Vector2(rect.size.x, max(6.0, rect.size.y * 0.16)))
+	var roof := Rect2(rect.position + Vector2(0, 3), Vector2(rect.size.x, maxf(6.0, rect.size.y * 0.16)))
+	var floor_rect := Rect2(rect.position + Vector2(5, rect.size.y * 0.22), Vector2(rect.size.x - 10.0, rect.size.y * 0.52))
+	map.draw_rect(rect.grow(8), Color(0.0, 0.0, 0.0, 0.22), true)
 	map.draw_rect(roof, Color("#050607").lightened(0.08), true)
-	map.draw_rect(Rect2(rect.position + Vector2(3, rect.size.y * 0.18), Vector2(rect.size.x - 6, rect.size.y * 0.58)), Color(type_color.r, type_color.g, type_color.b, 0.10), true)
+	for strip in range(4):
+		var strip_x: float = roof.position.x + 4.0 + float(strip) * maxf(12.0, roof.size.x / 5.0)
+		map.draw_line(Vector2(strip_x, roof.position.y + 1.0), Vector2(strip_x + 10.0, roof.position.y + roof.size.y - 1.0), Color(1, 1, 1, 0.08), 1)
+	map.draw_rect(floor_rect, Color(type_color.r, type_color.g, type_color.b, 0.10), true)
+	_draw_work_yard_clutter(map, building, rect, type_color)
 	_draw_facade_lines(map, building, rect, type_color)
 	var use_icon_pos := rect.position + rect.size * Vector2(0.16, 0.31)
 	_draw_building_use_icon(map, String(building.get("current_use", "")), use_icon_pos, minf(rect.size.x, rect.size.y) * 0.12)
@@ -444,6 +450,37 @@ func _draw_building_detail(map: Control, building: Dictionary, rect: Rect2) -> v
 		_draw_map_light(map, lamp, 5.0 + pulse * 3.0, ORANGE)
 	if String(building.get("status", "")) == "Infested":
 		_draw_zombie_silhouette(map, rect.position + rect.size * Vector2(0.78, 0.68), 0.75, RED)
+
+func _draw_work_yard_clutter(map: Control, building: Dictionary, rect: Rect2, type_color: Color) -> void:
+	var building_type := String(building.get("type", ""))
+	var base_seed := int(building.get("id", 0))
+	for crate in range(5):
+		var offset := Vector2(
+			rect.size.x * (0.18 + fmod(float(base_seed * 17 + crate * 13), 54.0) / 100.0),
+			rect.size.y * (0.42 + fmod(float(base_seed * 11 + crate * 19), 34.0) / 100.0)
+		)
+		var crate_size := Vector2(7.0 + float(crate % 2) * 3.0, 5.0 + float((crate + 1) % 2) * 3.0)
+		map.draw_rect(Rect2(rect.position + offset, crate_size), Color("#5d4930").lerp(type_color, 0.22), true)
+	match building_type:
+		"Base", "Crafting":
+			var bench := Rect2(rect.position + rect.size * Vector2(0.52, 0.57), rect.size * Vector2(0.28, 0.08))
+			map.draw_rect(bench, Color("#6d4f31"), true)
+			map.draw_line(bench.position + Vector2(2, 2), bench.position + bench.size - Vector2(2, 2), ORANGE.lightened(0.2), 2)
+		"Vehicle":
+			var vehicle := Rect2(rect.position + rect.size * Vector2(0.48, 0.55), rect.size * Vector2(0.28, 0.14))
+			map.draw_rect(vehicle, BLUE.darkened(0.35), true)
+			map.draw_circle(vehicle.position + Vector2(5, vehicle.size.y + 1), 3, Color("#050607"))
+			map.draw_circle(vehicle.position + Vector2(vehicle.size.x - 5, vehicle.size.y + 1), 3, Color("#050607"))
+		"Food":
+			for stack in range(3):
+				var pos := rect.position + rect.size * Vector2(0.47 + float(stack) * 0.09, 0.52)
+				map.draw_rect(Rect2(pos, Vector2(10, 10)), YELLOW.darkened(0.18), true)
+		"Defence":
+			var fence_y: float = rect.position.y + rect.size.y * 0.72
+			for post in range(4):
+				var x: float = rect.position.x + 10.0 + float(post) * (rect.size.x - 20.0) / 3.0
+				map.draw_line(Vector2(x, fence_y - 10.0), Vector2(x, fence_y + 10.0), RED.darkened(0.05), 2)
+			map.draw_line(Vector2(rect.position.x + 8.0, fence_y), Vector2(rect.position.x + rect.size.x - 8.0, fence_y), RED.darkened(0.05), 2)
 
 func _draw_facade_lines(map: Control, building: Dictionary, rect: Rect2, type_color: Color) -> void:
 	var status := String(building.get("status", "Unknown"))
@@ -515,13 +552,61 @@ func _building_type_color(type_name: String) -> Color:
 	return MUTED
 
 func _draw_expansion_marker(map: Control, building: Dictionary, rect: Rect2) -> void:
-	var pulse := 0.55 + (sin(ambient_time * 2.8 + float(building.get("id", 0))) + 1.0) * 0.15
-	var center := rect.position + rect.size * 0.5
-	var color := BLUE if String(building.get("status", "")) == "Scouted" else MUTED
-	map.draw_circle(center, 18.0, Color(0.0, 0.0, 0.0, 0.52))
-	map.draw_circle(center, 13.0 + pulse * 2.0, Color(color.r, color.g, color.b, 0.32))
-	map.draw_circle(center, 4.0, color)
-	map.draw_string(ThemeDB.fallback_font, center + Vector2(-4, 5), "?", HORIZONTAL_ALIGNMENT_CENTER, 8, 13, TEXT)
+	var type_color := _building_type_color(String(building.get("type", "")))
+	var pulse: float = 0.45 + (sin(ambient_time * 2.8 + float(building.get("id", 0))) + 1.0) * 0.16
+	var shell: Rect2 = rect.grow(2)
+	var roof_height: float = maxf(7.0, shell.size.y * 0.2)
+	map.draw_rect(shell.grow(6), Color(0.0, 0.0, 0.0, 0.44), true)
+	map.draw_rect(shell, Color(0.025, 0.028, 0.031, 0.58), true)
+	map.draw_rect(Rect2(shell.position, Vector2(shell.size.x, roof_height)), Color(0.0, 0.0, 0.0, 0.46), true)
+	map.draw_rect(shell, Color(type_color.r, type_color.g, type_color.b, 0.30 + pulse * 0.16), false, 1)
+	_draw_locked_facade(map, building, shell, type_color)
+	var tape_y: float = shell.position.y + shell.size.y * 0.72
+	for stripe in range(4):
+		var x0: float = shell.position.x + 4.0 + float(stripe) * maxf(10.0, shell.size.x / 4.5)
+		map.draw_line(Vector2(x0, tape_y + 8.0), Vector2(x0 + 10.0, tape_y), ORANGE.darkened(0.1), 2)
+	map.draw_line(Vector2(shell.position.x + 5.0, tape_y), Vector2(shell.position.x + shell.size.x - 5.0, tape_y), ORANGE.darkened(0.1), 1)
+	var lock_center := shell.position + shell.size * Vector2(0.82, 0.25)
+	map.draw_circle(lock_center, 8.0 + pulse * 3.0, Color(0.0, 0.0, 0.0, 0.52))
+	map.draw_arc(lock_center + Vector2(0, -2), 4.5, PI, TAU, 8, MUTED, 1.3)
+	map.draw_rect(Rect2(lock_center + Vector2(-4, -1), Vector2(8, 7)), MUTED.darkened(0.2), true)
+	var label := "LOCKED"
+	var requirement: String = BuildingManager.get_unlock_hint(building)
+	if requirement != "":
+		label = "NEEDS"
+	var text_pos := shell.position + Vector2(5.0, shell.size.y - 7.0)
+	map.draw_string(ThemeDB.fallback_font, text_pos, label, HORIZONTAL_ALIGNMENT_LEFT, shell.size.x - 10.0, 9, MUTED)
+
+func _draw_locked_facade(map: Control, building: Dictionary, rect: Rect2, type_color: Color) -> void:
+	var building_type := String(building.get("type", ""))
+	var ghost := Color(type_color.r, type_color.g, type_color.b, 0.18)
+	for line_index in range(3):
+		var y: float = rect.position.y + rect.size.y * (0.34 + float(line_index) * 0.13)
+		map.draw_line(Vector2(rect.position.x + 7.0, y), Vector2(rect.position.x + rect.size.x - 7.0, y), Color(1, 1, 1, 0.08), 1)
+	match building_type:
+		"Medical":
+			var c := rect.position + rect.size * Vector2(0.45, 0.45)
+			map.draw_line(c + Vector2(-7, 0), c + Vector2(7, 0), ghost.lightened(0.45), 2)
+			map.draw_line(c + Vector2(0, -7), c + Vector2(0, 7), ghost.lightened(0.45), 2)
+		"Vehicle":
+			var bay := Rect2(rect.position + rect.size * Vector2(0.2, 0.42), rect.size * Vector2(0.44, 0.22))
+			map.draw_rect(bay, Color(0, 0, 0, 0.28), true)
+			map.draw_rect(bay, ghost.lightened(0.2), false, 1)
+		"Defence":
+			var base := rect.position + rect.size * Vector2(0.46, 0.68)
+			map.draw_line(base, base + Vector2(-9, -20), ghost.lightened(0.35), 2)
+			map.draw_line(base, base + Vector2(9, -20), ghost.lightened(0.35), 2)
+			map.draw_line(base + Vector2(-12, -20), base + Vector2(12, -20), ghost.lightened(0.35), 2)
+		"Food":
+			for i in range(3):
+				var pos := rect.position + rect.size * Vector2(0.24 + float(i) * 0.16, 0.52)
+				map.draw_rect(Rect2(pos, Vector2(9, 8)), ghost.lightened(0.2), true)
+		_:
+			var shutter := Rect2(rect.position + rect.size * Vector2(0.2, 0.4), rect.size * Vector2(0.48, 0.25))
+			map.draw_rect(shutter, Color(0, 0, 0, 0.24), true)
+			for slat in range(3):
+				var y: float = shutter.position.y + float(slat + 1) * shutter.size.y / 4.0
+				map.draw_line(Vector2(shutter.position.x + 2.0, y), Vector2(shutter.position.x + shutter.size.x - 2.0, y), ghost.lightened(0.25), 1)
 
 func _draw_growth_perimeter(map: Control) -> void:
 	var map_size := map.size
@@ -586,21 +671,22 @@ func _draw_estate_minimap(node: Control) -> void:
 	var map_size := node.size
 	node.draw_rect(Rect2(Vector2.ZERO, map_size), Color("#0a0f13"), true)
 	node.draw_rect(Rect2(Vector2.ZERO, map_size), Color("#34404a"), false, 1)
-	var points := [
-		Vector2(0.18, 0.45), Vector2(0.35, 0.3), Vector2(0.55, 0.36),
-		Vector2(0.74, 0.25), Vector2(0.25, 0.7), Vector2(0.48, 0.66),
-		Vector2(0.68, 0.72), Vector2(0.84, 0.56), Vector2(0.1, 0.18)
-	]
-	for i in range(points.size()):
+	var layouts: Dictionary = HIDEOUT_LAYOUT if GameManager.colony_tier_index == 0 else BUILDING_LAYOUT
+	var last_pos := Vector2.ZERO
+	for i in range(BuildingManager.buildings.size()):
 		var building: Dictionary = BuildingManager.buildings[i]
-		var pos := Vector2(points[i].x * map_size.x, points[i].y * map_size.y)
+		var layout: Rect2 = layouts.get(String(building.get("name", "")), Rect2(0.4, 0.4, 0.1, 0.1))
+		var mini := Rect2(Vector2(layout.position.x * map_size.x, layout.position.y * map_size.y), Vector2(maxf(8.0, layout.size.x * map_size.x), maxf(5.0, layout.size.y * map_size.y)))
 		var color := _building_color(building)
-		var radius := 5.0 if String(building.get("status", "")) == "Unknown" else 7.0
-		node.draw_circle(pos, radius + 4.0, Color(0, 0, 0, 0.45))
-		node.draw_circle(pos, radius, color)
+		if _is_expansion_marker(building):
+			color = Color("#31383f")
+		node.draw_rect(mini.grow(2), Color(0, 0, 0, 0.42), true)
+		node.draw_rect(mini, Color(color.r, color.g, color.b, 0.72), true)
+		node.draw_rect(mini, Color(0.82, 0.88, 0.91, 0.22), false, 1)
 		if i > 0:
-			var prev := Vector2(points[i - 1].x * map_size.x, points[i - 1].y * map_size.y)
-			node.draw_line(prev, pos, Color("#3b454e"), 1)
+			var pos := mini.get_center()
+			node.draw_line(last_pos, pos, Color("#3b454e"), 1)
+		last_pos = mini.get_center()
 
 func _draw_map_bar(map: Control, pos: Vector2, width: float, value: float, color: Color) -> void:
 	map.draw_rect(Rect2(pos, Vector2(width, 3)), Color("#060809"), true)
@@ -613,7 +699,7 @@ func _position_building_buttons(map: Control) -> void:
 			continue
 		var button: Button = building_buttons[id]
 		button.text = _building_button_text(building)
-		button.add_theme_font_size_override("font_size", 12 if not _is_expansion_marker(building) else 18)
+		button.add_theme_font_size_override("font_size", 12 if not _is_expansion_marker(building) else 8)
 		var rect := _building_rect(map, building).grow(-4)
 		button.position = rect.position
 		button.size = rect.size
@@ -795,7 +881,12 @@ func _refresh_estate() -> void:
 		if building_buttons.has(id):
 			var button: Button = building_buttons[id]
 			button.text = _building_button_text(building)
-			button.modulate = ORANGE if id == selected_building_id else Color.WHITE
+			if id == selected_building_id:
+				button.modulate = ORANGE
+			elif _is_expansion_marker(building):
+				button.modulate = Color(0.78, 0.84, 0.88, 0.72)
+			else:
+				button.modulate = Color.WHITE
 	_position_building_buttons(map)
 	_position_survivor_tokens(map)
 	map.queue_redraw()
@@ -854,8 +945,8 @@ func _position_survivor_tokens(map: Control) -> void:
 		var id := int(survivor["id"])
 		if not survivor_tokens.has(id):
 			var token := _survivor_map_token(survivor)
-			token.custom_minimum_size = Vector2(22, 22)
-			token.size = Vector2(22, 22)
+			token.custom_minimum_size = Vector2(32, 38)
+			token.size = Vector2(32, 38)
 			token.pressed.connect(_show_task_popup.bind(id))
 			map.add_child(token)
 			survivor_tokens[id] = token
@@ -863,8 +954,7 @@ func _position_survivor_tokens(map: Control) -> void:
 		token.tooltip_text = "%s - %s" % [survivor["name"], survivor["assigned_task"]]
 		token.modulate = Color.WHITE
 		var destination := _survivor_destination(map, survivor, id)
-		var progress := int(ActivityManager.get_progress(id) * 100.0)
-		token.text = str(progress)
+		token.text = ""
 		token.queue_redraw()
 		var tween := create_tween()
 		tween.tween_property(token, "position", destination - token.size * 0.5, 0.45).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
@@ -1620,7 +1710,7 @@ func _selected_building() -> Dictionary:
 
 func _building_button_text(building: Dictionary) -> String:
 	if _is_expansion_marker(building):
-		return "?"
+		return "LOCKED\n%s" % String(building.get("type", "")).to_upper()
 	var assigned := Array(building.get("assigned_survivors", []))
 	return "%s\n%s  %d/%d" % [_building_display_name(building), building["status"], assigned.size(), int(building.get("capacity", 0))]
 
@@ -1772,6 +1862,12 @@ func _draw_survivor_icon(node: Control, survivor: Dictionary, compact: bool) -> 
 	node.draw_rect(Rect2(body_top, body_size), outline, false, 1)
 	_draw_task_tool(node, task, center + Vector2(head_radius * 1.7, body_size.y * 0.55), role_color, compact)
 	_draw_role_mark(node, survivor, center + Vector2(0, body_size.y * 0.95), accent, compact)
+	if compact:
+		var survivor_id := int(survivor.get("id", 0))
+		var progress := clampf(ActivityManager.get_progress(survivor_id), 0.0, 1.0)
+		var bar_rect := Rect2(Vector2(4.0, icon_size.y - 5.0), Vector2(maxf(1.0, icon_size.x - 8.0), 3.0))
+		node.draw_rect(bar_rect, Color(0.0, 0.0, 0.0, 0.82), true)
+		node.draw_rect(Rect2(bar_rect.position, Vector2(bar_rect.size.x * progress, bar_rect.size.y)), BLUE if progress > 0.0 else MUTED.darkened(0.25), true)
 
 func _draw_task_tool(node: Control, task: String, pos: Vector2, color: Color, compact: bool) -> void:
 	var tool_scale := 0.65 if compact else 0.95
