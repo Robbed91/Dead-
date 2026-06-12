@@ -30,7 +30,8 @@ func _process(delta: float) -> void:
 		if float(job["progress"]) >= float(job["duration"]):
 			completed.append(int(survivor_id))
 	for survivor_id in completed:
-		_complete_job(survivor_id)
+		if _is_job_still_complete(survivor_id):
+			_complete_job(survivor_id)
 	if not completed.is_empty() or update_accumulator >= 0.5:
 		update_accumulator = 0.0
 		activity_changed.emit()
@@ -88,6 +89,12 @@ func get_progress(survivor_id: int) -> float:
 func get_target(survivor_id: int) -> String:
 	var job := get_job(survivor_id)
 	return String(job.get("target", "Main Warehouse"))
+
+func _is_job_still_complete(survivor_id: int) -> bool:
+	var job := get_job(survivor_id)
+	if job.is_empty():
+		return false
+	return float(job.get("progress", 0.0)) >= float(job.get("duration", 1.0))
 
 func to_dict() -> Dictionary:
 	return {"active_jobs": active_jobs.duplicate(true), "next_expedition_id": next_expedition_id}

@@ -2,6 +2,7 @@ extends Node
 
 const SAVE_PATH := "user://dead_shift_save.json"
 const SETTINGS_PATH := "user://dead_shift_settings.json"
+const SAVE_VERSION := 2
 
 var settings := {
 	"sound_enabled": true,
@@ -33,6 +34,7 @@ func get_save_summary() -> Dictionary:
 
 func save_game(event_log: Array) -> bool:
 	var data := {
+		"save_version": SAVE_VERSION,
 		"resources": ResourceManager.to_dict(),
 		"survivors": SurvivorManager.to_dict(),
 		"buildings": BuildingManager.to_dict(),
@@ -58,6 +60,7 @@ func load_game() -> Dictionary:
 	var parsed = JSON.parse_string(file.get_as_text())
 	if typeof(parsed) != TYPE_DICTIONARY:
 		return {}
+	parsed["save_version"] = int(parsed.get("save_version", 1))
 	ResourceManager.from_dict(parsed.get("resources", {}))
 	SurvivorManager.from_dict(parsed.get("survivors", {}))
 	BuildingManager.from_dict(parsed.get("buildings", {}))
