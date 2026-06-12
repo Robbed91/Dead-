@@ -1011,16 +1011,16 @@ func _build_scavenge_commands() -> void:
 		command_body.add_child(button)
 
 func _build_crafting_commands() -> void:
-	var ammo := _small_button("CRAFT AMMO\n-12 mat +6")
-	ammo.custom_minimum_size = Vector2(130, 54)
-	ammo.disabled = ResourceManager.get_value("materials") < 12
-	ammo.pressed.connect(func(): _craft("materials", 12, "ammo", 6))
-	command_body.add_child(ammo)
-	var med := _small_button("MED KITS\n-8 mat +3")
-	med.custom_minimum_size = Vector2(130, 54)
-	med.disabled = ResourceManager.get_value("materials") < 8
-	med.pressed.connect(func(): _craft("materials", 8, "medicine", 3))
-	command_body.add_child(med)
+	for recipe_id in GameManager.CRAFT_RECIPES.keys():
+		var recipe_key := String(recipe_id)
+		var recipe: Dictionary = GameManager.CRAFT_RECIPES[recipe_key]
+		var availability := GameManager.can_craft(recipe_key)
+		var button := _small_button("%s\n-%s  +%s" % [recipe["name"], GameManager.recipe_cost_text(recipe_key), GameManager.recipe_gain_text(recipe_key)])
+		button.custom_minimum_size = Vector2(170, 54)
+		button.disabled = not bool(availability.get("ok", false))
+		button.tooltip_text = "%s %s" % [recipe["description"], String(availability.get("message", ""))]
+		button.pressed.connect(_on_craft_recipe.bind(recipe_key))
+		command_body.add_child(button)
 	var building := _selected_building()
 	if building.is_empty():
 		command_body.add_child(_label("Select a building before installing upgrades.", 13, MUTED))
@@ -1103,14 +1103,8 @@ func _on_assign_survivor_to_building(building_id: int) -> void:
 	var survivor_id := int(selected_building_survivor.get(building_id, int(survivors[0]["id"])))
 	_show_result(GameManager.assign_survivor_to_building(building_id, survivor_id)["message"])
 
-func _craft(cost_key: String, cost: int, gain_key: String, gain: int) -> void:
-	if ResourceManager.spend_resource(cost_key, cost):
-		ResourceManager.add_resource(gain_key, gain)
-		GameManager.add_log("Crafted +%d %s." % [gain, gain_key])
-		_show_result("Crafting complete.")
-	else:
-		_show_result("Not enough %s." % cost_key)
-	_refresh()
+func _on_craft_recipe(recipe_id: String) -> void:
+	_show_result(String(GameManager.craft_recipe(recipe_id)["message"]))
 
 func _on_install_upgrade(building_id: int, upgrade_id: String) -> void:
 	_show_result(GameManager.install_building_upgrade(building_id, upgrade_id)["message"])
@@ -1142,20 +1136,17 @@ func _show_build_popup() -> void:
 		action_button.pressed.connect(_run_building_action_from_modal.bind(int(building["id"]), action))
 		actions.add_child(action_button)
 
-	var workshop := _small_button("CRAFT AMMO\n-12 materials +6 ammo")
-	workshop.custom_minimum_size = Vector2(190, 54)
-	workshop.pressed.connect(func():
-		_dismiss_modal()
-		_craft("materials", 12, "ammo", 6)
-	)
-	actions.add_child(workshop)
-	var medkit := _small_button("CRAFT MEDS\n-8 materials +3 medicine")
-	medkit.custom_minimum_size = Vector2(190, 54)
-	medkit.pressed.connect(func():
-		_dismiss_modal()
-		_craft("materials", 8, "medicine", 3)
-	)
-	actions.add_child(medkit)
+	for recipe_id in GameManager.CRAFT_RECIPES.keys():
+		var recipe_key := String(recipe_id)
+		var recipe: Dictionary = GameManager.CRAFT_RECIPES[recipe_key]
+		var recipe_button := _small_button("%s\n-%s +%s" % [recipe["name"], GameManager.recipe_cost_text(recipe_key), GameManager.recipe_gain_text(recipe_key)])
+		recipe_button.custom_minimum_size = Vector2(190, 54)
+		recipe_button.disabled = not bool(GameManager.can_craft(recipe_key).get("ok", false))
+		recipe_button.pressed.connect(func():
+			_dismiss_modal()
+			_on_craft_recipe(recipe_key)
+		)
+		actions.add_child(recipe_button)
 	for upgrade_id in BuildingManager.UPGRADES.keys():
 		var upgrade: Dictionary = BuildingManager.UPGRADES[upgrade_id]
 		var upgrade_button := _small_button("%s\n%s" % [upgrade["name"], _cost_text(Dictionary(upgrade["cost"]))])

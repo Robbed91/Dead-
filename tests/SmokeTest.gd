@@ -36,6 +36,12 @@ func _run() -> void:
 	var upgrade_result := GameManager.install_building_upgrade(2, "workshop_bench")
 	_assert_true(bool(upgrade_result.get("ok", false)), "can install a persistent building upgrade")
 	_assert_true(BuildingManager.get_upgrade_defence_bonus() >= 0, "upgrade defence bonus can be queried")
+	var ammo_before := ResourceManager.get_value("ammo")
+	var craft_ammo := GameManager.craft_recipe("ammo_press")
+	_assert_true(bool(craft_ammo.get("ok", false)), "workshop can craft pressed ammo")
+	_assert_true(ResourceManager.get_value("ammo") > ammo_before, "crafting pressed ammo increases ammo")
+	var locked_filter := GameManager.can_craft("water_filters")
+	_assert_true(not bool(locked_filter.get("ok", false)), "facility-gated recipes stay locked until the correct use exists")
 
 	GameManager.assign_survivor_task(1, "Guard")
 	_assert_eq(ActivityManager.get_job(1).get("task", ""), "Guard", "survivor task starts tracked activity")

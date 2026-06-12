@@ -24,7 +24,7 @@ This is the practical definition of a complete testable V1, separate from a comm
 - Campaign victory exists: reach City, control all estate buildings, and survive to Day 30.
 - End-of-day events include trader, alarm, repair, sickness, radio, kitchen, weather, and resource moments.
 - Larger colonies now consume more support resources and suffer overcrowding if beds are short.
-- Crafting, radio, assignment, and building-management controls are disabled or hidden when unavailable.
+- Crafting uses facility-gated recipes for ammo, medicine, water, fuel, tools, and upgrades; radio, assignment, and building-management controls are disabled or hidden when unavailable.
 - First-run tutorial overlay explains the core loop and can be reopened from the in-game menu.
 - Settings/reset/credits and game prompts use in-game modals instead of native popups.
 - Scavenge cards, survivor portraits, building markers, role marks, resource chips, horde tokens, and location icons use a consistent procedural art style.

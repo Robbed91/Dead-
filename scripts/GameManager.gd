@@ -14,6 +14,43 @@ const COLONY_TIERS := [
 	{"id": "district", "name": "District", "population": 18, "buildings": 6, "reward": {"morale": 6, "security": 7}, "description": "A reclaimed industrial district with specialised buildings."},
 	{"id": "city", "name": "City", "population": 30, "buildings": 9, "reward": {"morale": 8, "security": 10}, "description": "A survivor city built from the old estate."}
 ]
+const CRAFT_RECIPES := {
+	"ammo_press": {
+		"name": "Pressed Ammo",
+		"cost": {"materials": 12},
+		"gain": {"ammo": 6},
+		"requires_use": "Workshop",
+		"description": "Turn scrap and fittings into usable rounds."
+	},
+	"field_meds": {
+		"name": "Field Meds",
+		"cost": {"materials": 8},
+		"gain": {"medicine": 3},
+		"requires_use": "Medical Bay",
+		"description": "Package basic dressings and antiseptic supplies."
+	},
+	"water_filters": {
+		"name": "Water Filters",
+		"cost": {"materials": 10, "tools": 1},
+		"gain": {"water": 18},
+		"requires_use": "Food Prep",
+		"description": "Make improvised filters for stored water."
+	},
+	"fuel_siphon": {
+		"name": "Fuel Siphon",
+		"cost": {"materials": 8, "tools": 1},
+		"gain": {"fuel": 8},
+		"requires_use": "Vehicle Bay",
+		"description": "Recover fuel from vehicles and yard equipment."
+	},
+	"tool_kit": {
+		"name": "Tool Kit",
+		"cost": {"materials": 16},
+		"gain": {"tools": 2},
+		"requires_use": "Workshop",
+		"description": "Assemble spare tools for building projects."
+	}
+}
 
 var event_log: Array = []
 var current_objective := "Billy is alone. Scavenge nearby units, find survivors, and build the colony."
@@ -122,6 +159,32 @@ func install_building_upgrade(building_id: int, upgrade_id: String) -> Dictionar
 	_update_objective()
 	state_changed.emit()
 	return result
+
+func craft_recipe(recipe_id: String) -> Dictionary:
+	if is_game_over():
+		return {"ok": false, "message": game_over_message}
+	if not CRAFT_RECIPES.has(recipe_id):
+		return {"ok": false, "message": "Unknown recipe."}
+	var recipe: Dictionary = CRAFT_RECIPES[recipe_id]
+	var requirement := String(recipe.get("requires_use", ""))
+	if requirement != "" and BuildingManager.count_by_use(requirement) <= 0:
+		return {"ok": false, "message": "%s needs an operational %s." % [recipe["name"], requirement]}
+	var cost: Dictionary = recipe["cost"]
+	for key in cost.keys():
+		if ResourceManager.get_value(String(key)) < int(cost[key]):
+			return {"ok": false, "message": "Not enough %s for %s." % [String(key), recipe["name"]]}
+	for key in cost.keys():
+		ResourceManager.add_resource(String(key), -int(cost[key]))
+	var gain: Dictionary = recipe["gain"]
+	for key in gain.keys():
+		ResourceManager.add_resource(String(key), int(gain[key]))
+	var gain_text := _resource_delta_text(gain)
+	var message := "Crafted %s: %s." % [recipe["name"], gain_text]
+	add_log(message)
+	phase = "Crafting"
+	_update_objective()
+	state_changed.emit()
+	return {"ok": true, "message": message, "recipe": recipe_id}
 
 func scavenge(location_name: String, survivor_id: int) -> Dictionary:
 	if is_game_over():
@@ -311,6 +374,35 @@ func get_campaign_milestones() -> Array:
 			"detail": "Day %d/30" % day
 		}
 	]
+
+func can_craft(recipe_id: String) -> Dictionary:
+	if not CRAFT_RECIPES.has(recipe_id):
+		return {"ok": false, "message": "Unknown recipe."}
+	var recipe: Dictionary = CRAFT_RECIPES[recipe_id]
+	var requirement := String(recipe.get("requires_use", ""))
+	if requirement != "" and BuildingManager.count_by_use(requirement) <= 0:
+		return {"ok": false, "message": "Requires %s." % requirement}
+	var cost: Dictionary = recipe["cost"]
+	for key in cost.keys():
+		if ResourceManager.get_value(String(key)) < int(cost[key]):
+			return {"ok": false, "message": "Needs %d %s." % [int(cost[key]), String(key)]}
+	return {"ok": true, "message": "Ready."}
+
+func recipe_cost_text(recipe_id: String) -> String:
+	if not CRAFT_RECIPES.has(recipe_id):
+		return ""
+	return _resource_delta_text(Dictionary(CRAFT_RECIPES[recipe_id]["cost"]))
+
+func recipe_gain_text(recipe_id: String) -> String:
+	if not CRAFT_RECIPES.has(recipe_id):
+		return ""
+	return _resource_delta_text(Dictionary(CRAFT_RECIPES[recipe_id]["gain"]))
+
+func _resource_delta_text(values: Dictionary) -> String:
+	var parts: Array = []
+	for key in values.keys():
+		parts.append("%s %s" % [str(values[key]), String(key)])
+	return ", ".join(parts)
 
 func _on_activity_job_completed(_survivor_id: int, _task: String, message: String) -> void:
 	add_log(message)

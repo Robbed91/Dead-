@@ -190,7 +190,7 @@ On desktop test runs, the exact folder is platform-specific and can be inspected
 - Combat is formula-based with night-attack visual feedback, not direct tactical combat.
 - Scavenging has timed survivor expeditions, but no multi-person expedition planning yet.
 - Building assignment and building-use bonuses are intentionally simple.
-- Crafting is a small prototype tab, not a full production chain.
+- Crafting is a facility-gated recipe system for ammo, medicine, water, fuel, tools, and upgrades; it is not yet a deep factory/production-chain simulation.
 - Facility upgrades are functional, but upgrade visuals are still represented by building stats and icons rather than bespoke construction art.
 - Survivor movement is animated token movement around colony buildings rather than full tactical pathfinding.
 - No final audio or music yet.
@@ -201,7 +201,7 @@ On desktop test runs, the exact folder is platform-specific and can be inspected
 - Replace procedural building facades with hand-authored or generated production art per lot.
 - Add larger survivor sprites and bespoke portrait art for named story survivors.
 - Add multi-survivor scavenging, expedition loadouts, and vehicle use.
-- Expand crafting into weapons, barricades, traps, and facility upgrades.
+- Expand crafting into weapon tiers, barricade kits, traps, and queued workshop production.
 - Add more event variety: alarms, trader visits, sickness, disputes, weather, horde warnings, and survivor relationship moments.
 - Add sound effects, menu music, night ambience, and Android vibration feedback.
 - Add automated save/load validation tests using Godot's headless runner.
