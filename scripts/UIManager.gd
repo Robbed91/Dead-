@@ -258,6 +258,7 @@ func _build_right_panel(right: VBoxContainer) -> void:
 
 func _build_command_bar(root: VBoxContainer) -> void:
 	var bottom := HBoxContainer.new()
+	bottom.name = "BottomCommandBar"
 	bottom.custom_minimum_size = Vector2(0, 76)
 	bottom.add_theme_constant_override("separation", 4)
 	root.add_child(bottom)
@@ -302,6 +303,7 @@ func _build_command_bar(root: VBoxContainer) -> void:
 
 func _build_quick_bar() -> void:
 	quick_bar = HBoxContainer.new()
+	quick_bar.name = "QuickMenuBar"
 	quick_bar.set_anchors_preset(Control.PRESET_TOP_RIGHT)
 	quick_bar.offset_left = -96
 	quick_bar.offset_top = 66
@@ -1403,9 +1405,14 @@ func _show_tutorial() -> void:
 func _show_modal(title_text: String, panel_size: Vector2) -> VBoxContainer:
 	_dismiss_modal()
 	var viewport_size: Vector2 = get_viewport_rect().size
+	var margins := _safe_area_margins()
+	var available_size := Vector2(
+		maxf(260.0, viewport_size.x - margins.x - margins.z - 48.0),
+		maxf(180.0, viewport_size.y - margins.y - margins.w - 48.0)
+	)
 	var clamped_size := Vector2(
-		minf(panel_size.x, maxf(300.0, viewport_size.x - 64.0)),
-		minf(panel_size.y, maxf(220.0, viewport_size.y - 64.0))
+		minf(panel_size.x, available_size.x),
+		minf(panel_size.y, available_size.y)
 	)
 	modal_overlay = ColorRect.new()
 	modal_overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -1416,10 +1423,10 @@ func _show_modal(title_text: String, panel_size: Vector2) -> VBoxContainer:
 
 	var center := CenterContainer.new()
 	center.set_anchors_preset(Control.PRESET_FULL_RECT)
-	center.offset_left = 24
-	center.offset_top = 24
-	center.offset_right = -24
-	center.offset_bottom = -24
+	center.offset_left = 24.0 + margins.x
+	center.offset_top = 24.0 + margins.y
+	center.offset_right = -24.0 - margins.z
+	center.offset_bottom = -24.0 - margins.w
 	modal_overlay.add_child(center)
 
 	var framed := _create_panel(clamped_size)
@@ -1428,11 +1435,23 @@ func _show_modal(title_text: String, panel_size: Vector2) -> VBoxContainer:
 	panel.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	panel.custom_minimum_size = clamped_size
 	panel.size = clamped_size
+	panel.clip_contents = true
 	center.add_child(panel)
 
-	var box: VBoxContainer = framed["box"]
-	box.add_child(_label(title_text, 22, ORANGE, HORIZONTAL_ALIGNMENT_CENTER))
-	return box
+	var outer_box: VBoxContainer = framed["box"]
+	outer_box.add_child(_label(title_text, 22, ORANGE, HORIZONTAL_ALIGNMENT_CENTER))
+	var scroll := ScrollContainer.new()
+	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	outer_box.add_child(scroll)
+	var content := VBoxContainer.new()
+	content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	content.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	content.add_theme_constant_override("separation", 4)
+	scroll.add_child(content)
+	return content
 
 func _dismiss_modal() -> void:
 	if modal_overlay != null and is_instance_valid(modal_overlay):

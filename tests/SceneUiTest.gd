@@ -6,6 +6,7 @@ func _init() -> void:
 	call_deferred("_run")
 
 func _run() -> void:
+	DisplayServer.window_set_size(Vector2i(1228, 691))
 	await process_frame
 	GameManager.new_game()
 	var scene := load("res://scenes/Game.tscn") as PackedScene
@@ -17,13 +18,15 @@ func _run() -> void:
 	_assert_true(game.get_child_count() >= 3, "Game scene builds visible UI children")
 	_assert_true(_has_button_text(game, "MENU"), "Game scene contains menu button")
 	_assert_true(_has_label_text(game, "DEAD SHIFT"), "Game scene contains title label")
-	game.call("_show_scavenge_popup")
-	await process_frame
-	var modal_panel := _largest_panel(game)
-	_assert_true(modal_panel != null, "Scavenge popup creates an in-game modal panel")
-	if modal_panel != null:
-		var viewport_size: Vector2 = game.get_viewport_rect().size
-		_assert_true(modal_panel.size.x <= viewport_size.x and modal_panel.size.y <= viewport_size.y, "Modal panel remains inside current viewport")
+	_assert_rect_inside_viewport(game.find_child("BottomCommandBar", true, false) as Control, game, "Bottom command bar starts inside phone viewport")
+	_assert_rect_inside_viewport(game.find_child("QuickMenuBar", true, false) as Control, game, "Quick menu starts inside phone viewport")
+	await _assert_game_popup_fit(game, "_show_scavenge_popup", [], "Scavenge popup")
+	await _assert_game_popup_fit(game, "_show_build_popup", [], "Build popup")
+	await _assert_game_popup_fit(game, "_show_defence_popup", [], "Defence popup")
+	await _assert_game_popup_fit(game, "_show_game_menu", [], "Game menu popup")
+	await _assert_game_popup_fit(game, "_show_tutorial", [], "Tutorial popup")
+	await _assert_game_popup_fit(game, "_show_task_popup", [1], "Survivor task popup")
+	await _assert_game_popup_fit(game, "_show_result", ["Phone viewport test message"], "Result popup")
 	game.queue_free()
 
 	var menu_scene := load("res://scenes/MainMenu.tscn") as PackedScene
@@ -93,6 +96,41 @@ func _largest_panel(node: Node) -> PanelContainer:
 		if best == null or candidate.size.length_squared() > best.size.length_squared():
 			best = candidate
 	return best
+
+func _modal_panel(node: Node) -> PanelContainer:
+	var overlay := _modal_overlay(node)
+	if overlay == null:
+		return null
+	return _largest_panel(overlay)
+
+func _modal_overlay(node: Node) -> ColorRect:
+	if node is ColorRect and absf(float(node.color.a) - 0.72) < 0.02:
+		return node
+	for child in node.get_children():
+		var found := _modal_overlay(child)
+		if found != null:
+			return found
+	return null
+
+func _assert_game_popup_fit(game: Control, method_name: String, args: Array, label: String) -> void:
+	game.callv(method_name, args)
+	await process_frame
+	await process_frame
+	var modal_panel := _modal_panel(game)
+	_assert_true(modal_panel != null, "%s creates an in-game modal panel" % label)
+	_assert_rect_inside_viewport(modal_panel, game, "%s remains inside phone viewport" % label)
+	_assert_rect_inside_viewport(game.find_child("BottomCommandBar", true, false) as Control, game, "Bottom command bar remains inside after %s" % label)
+	_assert_rect_inside_viewport(game.find_child("QuickMenuBar", true, false) as Control, game, "Quick menu remains inside after %s" % label)
+	game.call("_dismiss_modal")
+	await process_frame
+
+func _assert_rect_inside_viewport(control: Control, viewport_owner: Control, message: String) -> void:
+	if control == null:
+		failures.append("%s: missing control" % message)
+		return
+	var viewport_rect := Rect2(Vector2.ZERO, viewport_owner.get_viewport_rect().size)
+	var rect := Rect2(control.global_position, control.size)
+	_assert_true(viewport_rect.encloses(rect), message)
 
 func _assert_true(value: bool, message: String) -> void:
 	if not value:
