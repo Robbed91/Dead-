@@ -7,9 +7,16 @@ const TASKS := ["Rest", "Guard", "Build", "Repair", "Scavenge", "Medical", "Cook
 const RECRUIT_ROLES := ["Builder", "Medic", "Mechanic", "Cook", "Scout", "Guard", "Engineer", "Farmer", "Teacher", "Negotiator", "Quartermaster", "Radio Operator", "Driver", "Fabricator"]
 const FIRST_NAMES := ["Nina", "Raj", "Leanne", "Tom", "Sofia", "Gareth", "Priya", "Dylan", "Mo", "Hannah", "Callum", "Aisha"]
 const TRAITS := ["Steady", "Quick Learner", "Tired", "Brave", "Practical", "Quiet", "Resourceful", "Nervous", "Methodical"]
+const STORY_RECRUITS := [
+	{"name": "Jess", "role": "Medic", "morale": 85, "loyalty": 80, "traits": ["Medical", "Calm", "Careful"]},
+	{"name": "Aaron", "role": "Guard", "morale": 70, "loyalty": 65, "traits": ["Combat", "Alert", "Suspicious"]},
+	{"name": "Karen", "role": "Cook", "morale": 75, "loyalty": 70, "traits": ["Food Prep", "Organised", "Anxious"]},
+	{"name": "Mick", "role": "Builder", "morale": 78, "loyalty": 72, "traits": ["Repairs", "Heavy Lifting", "Noisy"]}
+]
 
 var survivors: Array = []
 var next_id := 1
+var next_story_recruit_index := 0
 
 func _ready() -> void:
 	reset()
@@ -18,6 +25,7 @@ func reset() -> void:
 	survivors = StartingSurvivors.get_data()
 	_normalize_survivors()
 	next_id = 1
+	next_story_recruit_index = 0
 	for survivor in survivors:
 		next_id = max(next_id, int(survivor["id"]) + 1)
 	survivors_changed.emit()
@@ -268,6 +276,24 @@ func adjust_morale(id: int, amount: int) -> void:
 	survivors_changed.emit()
 
 func generate_recruit() -> Dictionary:
+	if next_story_recruit_index < STORY_RECRUITS.size():
+		var story_recruit: Dictionary = STORY_RECRUITS[next_story_recruit_index]
+		return {
+			"id": next_id,
+			"name": story_recruit["name"],
+			"role": story_recruit["role"],
+			"health": randi_range(86, 100),
+			"morale": int(story_recruit["morale"]),
+			"loyalty": int(story_recruit["loyalty"]),
+			"infection_risk": randi_range(0, 8),
+			"assigned_task": "Rest",
+			"assigned_building": "Main Warehouse",
+			"control_mode": "NPC",
+			"status": "Waiting",
+			"traits": Array(story_recruit["traits"]).duplicate(true),
+			"story_recruit": true,
+			"story_index": next_story_recruit_index
+		}
 	var role: String = RECRUIT_ROLES.pick_random()
 	return {
 		"id": next_id,
@@ -290,26 +316,32 @@ func invite_recruit(recruit: Dictionary) -> void:
 	survivor["status"] = "Healthy"
 	survivor["control_mode"] = "NPC"
 	survivor["assigned_task"] = _npc_task_for_survivor(survivor)
+	survivor.erase("story_recruit")
+	survivor.erase("story_index")
 	next_id += 1
+	_consume_story_recruit(recruit)
 	survivors.append(survivor)
 	ResourceManager.set_value("population", survivors.size())
 	ResourceManager.add_resource("morale", 3)
 	survivors_changed.emit()
 
-func quarantine_recruit(_recruit: Dictionary) -> void:
+func quarantine_recruit(recruit: Dictionary) -> void:
+	_consume_story_recruit(recruit)
 	ResourceManager.add_resource("morale", -2)
 	ResourceManager.add_resource("infection_risk", -3)
 
-func reject_recruit(_recruit: Dictionary) -> void:
+func reject_recruit(recruit: Dictionary) -> void:
+	_consume_story_recruit(recruit)
 	ResourceManager.add_resource("morale", -1)
 
 func to_dict() -> Dictionary:
-	return {"survivors": survivors.duplicate(true), "next_id": next_id}
+	return {"survivors": survivors.duplicate(true), "next_id": next_id, "next_story_recruit_index": next_story_recruit_index}
 
 func from_dict(data: Dictionary) -> void:
 	survivors = Array(data.get("survivors", [])).duplicate(true)
 	_normalize_survivors()
 	next_id = int(data.get("next_id", survivors.size() + 1))
+	next_story_recruit_index = int(data.get("next_story_recruit_index", _infer_next_story_recruit_index()))
 	ResourceManager.set_value("population", survivors.filter(func(s): return s.get("status", "Healthy") != "Dead").size())
 	survivors_changed.emit()
 
@@ -333,6 +365,19 @@ func _normalize_survivors() -> void:
 			survivor["control_mode"] = "Crew" if not first_alive_crew_assigned and String(survivor.get("status", "Healthy")) != "Dead" else "NPC"
 		if String(survivor.get("control_mode", "")) == "Crew" and String(survivor.get("status", "Healthy")) != "Dead":
 			first_alive_crew_assigned = true
+
+func _consume_story_recruit(recruit: Dictionary) -> void:
+	if bool(recruit.get("story_recruit", false)):
+		next_story_recruit_index = max(next_story_recruit_index, int(recruit.get("story_index", next_story_recruit_index)) + 1)
+
+func _infer_next_story_recruit_index() -> int:
+	var index := 0
+	for story_recruit in STORY_RECRUITS:
+		for survivor in survivors:
+			if String(survivor.get("name", "")) == String(story_recruit["name"]) and String(survivor.get("role", "")) == String(story_recruit["role"]):
+				index += 1
+				break
+	return index
 
 func _npc_task_for_survivor(survivor: Dictionary) -> String:
 	var role := String(survivor.get("role", ""))
