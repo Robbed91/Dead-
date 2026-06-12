@@ -13,21 +13,27 @@ func reset() -> void:
 	locations = LocationData.get_data()
 	_normalize_locations()
 
-func run_scavenge(location_name: String, survivor_id: int, assign_task := true) -> Dictionary:
+func run_scavenge(location_name: String, survivor_id: int, assign_task := true, party_ids: Array = []) -> Dictionary:
 	var location := _find_location(location_name)
 	var availability := _availability_for_location(location, location_name)
 	if not bool(availability.get("ok", false)):
 		return availability
+	if party_ids.is_empty():
+		party_ids = [survivor_id]
+	var party_size := max(1, party_ids.size())
 	if assign_task:
-		SurvivorManager.assign_task(survivor_id, "Scavenge")
+		for party_id in party_ids:
+			SurvivorManager.assign_task(int(party_id), "Scavenge")
 	var danger := _danger_value(location["danger"])
 	var alarm := _alarm_value(location["alarm_risk"])
-	var loot := _roll_loot(location)
-	var noise := randi_range(3, 8) + alarm
+	var loot := _roll_loot(location, party_size)
+	var noise := randi_range(3, 8) + alarm + max(0, party_size - 1) * 2
 	var injury_roll := randi_range(1, 100)
 	var infection_roll := randi_range(1, 100)
-	var injury := injury_roll <= danger * 12
-	var infection := infection_roll <= danger * 5
+	var injury_chance: int = max(danger * 6, danger * 12 - max(0, party_size - 1) * 4)
+	var infection_chance: int = max(danger * 3, danger * 5 - max(0, party_size - 1) * 2)
+	var injury := injury_roll <= injury_chance
+	var infection := infection_roll <= infection_chance
 	var recruit := {}
 
 	for key in loot:
@@ -36,7 +42,8 @@ func run_scavenge(location_name: String, survivor_id: int, assign_task := true) 
 
 	var injured_survivor := {}
 	if injury:
-		injured_survivor = SurvivorManager.injure_survivor(survivor_id, randi_range(8, 24), 8 if infection else 0)
+		var injured_id := int(party_ids.pick_random())
+		injured_survivor = SurvivorManager.injure_survivor(injured_id, randi_range(8, 24), 8 if infection else 0)
 		ResourceManager.add_resource("morale", -2)
 	if infection:
 		ResourceManager.add_resource("infection_risk", 2)
@@ -45,11 +52,12 @@ func run_scavenge(location_name: String, survivor_id: int, assign_task := true) 
 		recruit_chance = 65
 	elif SurvivorManager.get_population_count() <= 3:
 		recruit_chance = 35
+	recruit_chance += min(15, max(0, party_size - 1) * 5)
 	if bool(location["possible_survivors"]) and randi_range(1, 100) <= recruit_chance:
 		recruit = SurvivorManager.generate_recruit()
 	_update_location_after_scavenge(location, danger, alarm)
 
-	var message := "%s scavenged: %s. Noise +%d. Supplies %d%%." % [location_name, _loot_text(loot), noise, int(location.get("remaining", 0))]
+	var message := "%s scavenged by %d survivor(s): %s. Noise +%d. Supplies %d%%." % [location_name, party_size, _loot_text(loot), noise, int(location.get("remaining", 0))]
 	if injury and not injured_survivor.is_empty():
 		message += " %s was injured." % injured_survivor.get("name", "Someone")
 	if not recruit.is_empty():
@@ -60,6 +68,8 @@ func run_scavenge(location_name: String, survivor_id: int, assign_task := true) 
 		"location": location_name,
 		"loot": loot,
 		"noise": noise,
+		"party_size": party_size,
+		"party_ids": party_ids.duplicate(),
 		"remaining": int(location.get("remaining", 0)),
 		"injury": injury,
 		"infection": infection,
@@ -72,15 +82,16 @@ func run_scavenge(location_name: String, survivor_id: int, assign_task := true) 
 func can_scavenge(location_name: String) -> Dictionary:
 	return _availability_for_location(_find_location(location_name), location_name)
 
-func _roll_loot(location: Dictionary) -> Dictionary:
+func _roll_loot(location: Dictionary, party_size: int = 1) -> Dictionary:
 	var loot := {}
 	var keys: Array = location["loot"]
 	if keys.has("random"):
 		keys = ["food", "water", "materials", "medicine", "ammo", "tools", "fuel"]
 	var remaining: float = clampf(float(location.get("remaining", 100)) / 100.0, 0.15, 1.0)
+	var party_multiplier: float = 1.0 + minf(0.75, float(max(0, party_size - 1)) * 0.25)
 	for key in keys:
 		var resource_key: String = "materials" if key == "vehicle_parts" else String(key)
-		loot[resource_key] = max(1, int(round(float(randi_range(4, 16)) * remaining)))
+		loot[resource_key] = max(1, int(round(float(randi_range(4, 16)) * remaining * party_multiplier)))
 	return loot
 
 func advance_day() -> Array:

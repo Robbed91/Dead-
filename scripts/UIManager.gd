@@ -48,6 +48,7 @@ const HIDEOUT_LAYOUT := {
 var active_tab := "Buildings"
 var selected_building_id := 1
 var selected_scavenger_id := 1
+var selected_scavenge_party_size := 1
 var selected_building_use: Dictionary = {}
 var selected_building_survivor: Dictionary = {}
 var tab_buttons: Dictionary = {}
@@ -1032,12 +1033,22 @@ func _build_scavenge_commands() -> void:
 	var crew_survivors := SurvivorManager.get_crew_survivors()
 	if not crew_survivors.is_empty() and not _is_selected_scavenger_crew():
 		selected_scavenger_id = int(crew_survivors[0]["id"])
+	selected_scavenge_party_size = clampi(selected_scavenge_party_size, 1, max(1, min(GameManager.get_scavenge_party_limit(), crew_survivors.size())))
 	for survivor in crew_survivors:
 		selector.add_item(String(survivor["name"]), int(survivor["id"]))
 		if int(survivor["id"]) == selected_scavenger_id:
 			selector.select(selector.get_item_count() - 1)
 	selector.item_selected.connect(_on_scavenger_selected.bind(selector))
 	command_body.add_child(selector)
+	var party_selector := OptionButton.new()
+	party_selector.custom_minimum_size = Vector2(120, 54)
+	var max_party := max(1, min(GameManager.get_scavenge_party_limit(), crew_survivors.size()))
+	for party_size in range(1, max_party + 1):
+		party_selector.add_item("Party %d" % party_size, party_size)
+		if party_size == selected_scavenge_party_size:
+			party_selector.select(party_selector.get_item_count() - 1)
+	party_selector.item_selected.connect(_on_scavenge_party_size_selected.bind(party_selector))
+	command_body.add_child(party_selector)
 	for location in ScavengeManager.locations:
 		var loot_text := ", ".join(Array(location.get("loot", [])))
 		var state := _location_state_text(location)
@@ -1107,10 +1118,13 @@ func _on_building_action(id: int, action: String) -> void:
 	_show_result(GameManager.building_action(id, action)["message"])
 
 func _on_scavenge(location_name: String) -> void:
-	_show_result(GameManager.scavenge(location_name, selected_scavenger_id)["message"])
+	_show_result(GameManager.scavenge_party(location_name, _selected_scavenge_party_ids())["message"])
 
 func _on_scavenger_selected(index: int, selector: OptionButton) -> void:
 	selected_scavenger_id = selector.get_item_id(index)
+
+func _on_scavenge_party_size_selected(index: int, selector: OptionButton) -> void:
+	selected_scavenge_party_size = selector.get_item_id(index)
 
 func _on_prepare_defence(tactic_id: String) -> void:
 	_show_result(GameManager.prepare_defences(tactic_id)["message"])
@@ -1239,9 +1253,10 @@ func _show_scavenge_popup() -> void:
 	var crew_survivors := SurvivorManager.get_crew_survivors()
 	if not crew_survivors.is_empty() and not _is_selected_scavenger_crew():
 		selected_scavenger_id = int(crew_survivors[0]["id"])
+	selected_scavenge_party_size = clampi(selected_scavenge_party_size, 1, max(1, min(GameManager.get_scavenge_party_limit(), crew_survivors.size())))
 	var box := _show_modal("Scout Locations", Vector2(660, 470))
 	var selected_name := SurvivorManager.get_survivor_name(selected_scavenger_id)
-	var help := _label("Selected survivor: %s. Pick a location to search now, or open the full Scavenge tab to change survivor." % selected_name, 14, TEXT)
+	var help := _label("Lead survivor: %s. Party size: %d. Pick a location to search now, or open the full Scavenge tab to change survivor/party." % [selected_name, selected_scavenge_party_size], 14, TEXT)
 	help.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	box.add_child(help)
 
@@ -1438,7 +1453,7 @@ func _run_defence_from_modal(tactic_id: String) -> void:
 
 func _run_scavenge_from_modal(location_name: String) -> void:
 	_dismiss_modal()
-	var result: Dictionary = GameManager.scavenge(location_name, selected_scavenger_id)
+	var result: Dictionary = GameManager.scavenge_party(location_name, _selected_scavenge_party_ids())
 	_show_result(String(result["message"]))
 
 func _is_selected_scavenger_crew() -> bool:
@@ -1446,6 +1461,24 @@ func _is_selected_scavenger_crew() -> bool:
 		if int(survivor["id"]) == selected_scavenger_id:
 			return true
 	return false
+
+func _selected_scavenge_party_ids() -> Array:
+	var ids: Array = []
+	if selected_scavenger_id > 0:
+		ids.append(selected_scavenger_id)
+	var crew := SurvivorManager.get_crew_survivors()
+	var max_party := max(1, min(selected_scavenge_party_size, min(GameManager.get_scavenge_party_limit(), crew.size())))
+	for survivor in crew:
+		var id := int(survivor["id"])
+		if ids.has(id):
+			continue
+		var job := ActivityManager.get_job(id)
+		if String(job.get("task", "")) == "Scavenge" and String(job.get("location", "")) != "":
+			continue
+		ids.append(id)
+		if ids.size() >= max_party:
+			break
+	return ids
 
 func _confirm_reset_save() -> void:
 	var box := _show_modal("Reset Save", Vector2(430, 230))

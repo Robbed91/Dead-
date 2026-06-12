@@ -21,6 +21,7 @@ This is the practical definition of a complete testable V1, separate from a comm
 - Building unlock rules now use population and survivor skills.
 - Scavenging has early, mid, and late-game locations with facility requirements.
 - Radio contact can find recruitable survivors.
+- Scavenging supports solo and party expeditions with shared timed jobs and party-size selection.
 - Campaign victory exists: reach City, control all estate buildings, and survive to Day 30.
 - End-of-day events include trader, alarm, repair, sickness, radio, kitchen, weather, and resource moments.
 - Larger colonies now consume more support resources and suffer overcrowding if beds are short.

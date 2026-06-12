@@ -187,22 +187,41 @@ func craft_recipe(recipe_id: String) -> Dictionary:
 	return {"ok": true, "message": message, "recipe": recipe_id}
 
 func scavenge(location_name: String, survivor_id: int) -> Dictionary:
+	return scavenge_party(location_name, [survivor_id])
+
+func scavenge_party(location_name: String, survivor_ids: Array) -> Dictionary:
 	if is_game_over():
 		return {"ok": false, "message": game_over_message}
-	if not SurvivorManager.is_crew(survivor_id):
-		return {"ok": false, "message": "%s is an NPC resident. Add them to the crew before sending them outside." % SurvivorManager.get_survivor_name(survivor_id)}
-	if ActivityManager.get_job(survivor_id).get("task", "") == "Scavenge" and ActivityManager.get_job(survivor_id).get("location", "") != "":
-		return {"ok": false, "message": "%s is already outside scavenging." % SurvivorManager.get_survivor_name(survivor_id)}
+	var party_ids := _unique_survivor_ids(survivor_ids)
+	if party_ids.is_empty():
+		return {"ok": false, "message": "No crew selected for scavenging."}
+	if party_ids.size() > get_scavenge_party_limit():
+		return {"ok": false, "message": "Party too large. Current limit is %d survivor(s)." % get_scavenge_party_limit()}
+	for raw_id in party_ids:
+		var survivor_id := int(raw_id)
+		if not SurvivorManager.is_crew(survivor_id):
+			return {"ok": false, "message": "%s is an NPC resident. Add them to the crew before sending them outside." % SurvivorManager.get_survivor_name(survivor_id)}
+		if ActivityManager.get_job(survivor_id).get("task", "") == "Scavenge" and ActivityManager.get_job(survivor_id).get("location", "") != "":
+			return {"ok": false, "message": "%s is already outside scavenging." % SurvivorManager.get_survivor_name(survivor_id)}
 	var availability := ScavengeManager.can_scavenge(location_name)
 	if not bool(availability.get("ok", false)):
 		return availability
-	ActivityManager.start_scavenge(survivor_id, location_name)
-	var result := {"ok": true, "message": "%s left to scavenge %s." % [SurvivorManager.get_survivor_name(survivor_id), location_name]}
+	ActivityManager.start_scavenge_party(party_ids, location_name)
+	var result := {"ok": true, "message": "%s left to scavenge %s." % [_party_names(party_ids), location_name], "party_ids": party_ids}
 	add_log(result["message"])
 	phase = "Scavenge"
 	_update_objective()
 	state_changed.emit()
 	return result
+
+func get_scavenge_party_limit() -> int:
+	if SurvivorManager.get_population_count() >= 10 and BuildingManager.count_by_use("Vehicle Bay") > 0:
+		return 4
+	if SurvivorManager.get_population_count() >= 5:
+		return 3
+	if SurvivorManager.get_population_count() >= 2:
+		return 2
+	return 1
 
 func handle_recruit(choice: String) -> void:
 	if pending_recruit.is_empty():
@@ -403,6 +422,20 @@ func _resource_delta_text(values: Dictionary) -> String:
 	for key in values.keys():
 		parts.append("%s %s" % [str(values[key]), String(key)])
 	return ", ".join(parts)
+
+func _unique_survivor_ids(values: Array) -> Array:
+	var ids: Array = []
+	for value in values:
+		var id := int(value)
+		if id > 0 and not ids.has(id):
+			ids.append(id)
+	return ids
+
+func _party_names(ids: Array) -> String:
+	var names: Array = []
+	for value in ids:
+		names.append(SurvivorManager.get_survivor_name(int(value)))
+	return ", ".join(names)
 
 func _on_activity_job_completed(_survivor_id: int, _task: String, message: String) -> void:
 	add_log(message)

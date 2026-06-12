@@ -188,7 +188,7 @@ On desktop test runs, the exact folder is platform-specific and can be inspected
 
 - Art is prototype-ready rather than commercial final: generated stage backdrops plus procedural in-game buildings, facades, survivor sprites, role marks, location cards, lights, horde markers, and UI icons.
 - Combat is formula-based with night-attack visual feedback, not direct tactical combat.
-- Scavenging has timed survivor expeditions, but no multi-person expedition planning yet.
+- Scavenging has timed solo and party expeditions with party-size selection, shared return timing, location depletion, cooldown, injury/infection risk, loot, and survivor encounters.
 - Building assignment and building-use bonuses are intentionally simple.
 - Crafting is a facility-gated recipe system for ammo, medicine, water, fuel, tools, and upgrades; it is not yet a deep factory/production-chain simulation.
 - Facility upgrades are functional, but upgrade visuals are still represented by building stats and icons rather than bespoke construction art.
@@ -200,7 +200,7 @@ On desktop test runs, the exact folder is platform-specific and can be inspected
 
 - Replace procedural building facades with hand-authored or generated production art per lot.
 - Add larger survivor sprites and bespoke portrait art for named story survivors.
-- Add multi-survivor scavenging, expedition loadouts, and vehicle use.
+- Add expedition loadouts, vehicle use, and specialist scouting modifiers.
 - Expand crafting into weapon tiers, barricade kits, traps, and queued workshop production.
 - Add more event variety: alarms, trader visits, sickness, disputes, weather, horde warnings, and survivor relationship moments.
 - Add sound effects, menu music, night ambience, and Android vibration feedback.

@@ -16,6 +16,7 @@ const TASK_DURATIONS := {
 
 var active_jobs: Dictionary = {}
 var update_accumulator := 0.0
+var next_expedition_id := 1
 
 func _process(delta: float) -> void:
 	if active_jobs.is_empty():
@@ -36,6 +37,7 @@ func _process(delta: float) -> void:
 
 func reset() -> void:
 	active_jobs = {}
+	next_expedition_id = 1
 	for survivor in SurvivorManager.get_available_scavengers():
 		start_task(int(survivor["id"]), String(survivor.get("assigned_task", "Rest")))
 	activity_changed.emit()
@@ -52,14 +54,26 @@ func start_task(survivor_id: int, task: String) -> void:
 	activity_changed.emit()
 
 func start_scavenge(survivor_id: int, location_name: String) -> void:
-	active_jobs[survivor_id] = {
-		"task": "Scavenge",
-		"progress": 0.0,
-		"duration": float(TASK_DURATIONS.get("Scavenge", 18.0)) + randf_range(0.0, 6.0),
-		"target": "Garage",
-		"location": location_name,
-	}
-	SurvivorManager.assign_task(survivor_id, "Scavenge")
+	start_scavenge_party([survivor_id], location_name)
+
+func start_scavenge_party(party_ids: Array, location_name: String) -> void:
+	if party_ids.is_empty():
+		return
+	var expedition_id := next_expedition_id
+	next_expedition_id += 1
+	var duration := float(TASK_DURATIONS.get("Scavenge", 18.0)) + randf_range(0.0, 6.0)
+	for raw_id in party_ids:
+		var survivor_id := int(raw_id)
+		active_jobs[survivor_id] = {
+			"task": "Scavenge",
+			"progress": 0.0,
+			"duration": duration,
+			"target": "Garage",
+			"location": location_name,
+			"expedition_id": expedition_id,
+			"party_ids": party_ids.duplicate(),
+		}
+		SurvivorManager.assign_task(survivor_id, "Scavenge")
 	activity_changed.emit()
 
 func get_job(survivor_id: int) -> Dictionary:
@@ -76,10 +90,11 @@ func get_target(survivor_id: int) -> String:
 	return String(job.get("target", "Main Warehouse"))
 
 func to_dict() -> Dictionary:
-	return {"active_jobs": active_jobs.duplicate(true)}
+	return {"active_jobs": active_jobs.duplicate(true), "next_expedition_id": next_expedition_id}
 
 func from_dict(data: Dictionary) -> void:
 	active_jobs = {}
+	next_expedition_id = int(data.get("next_expedition_id", 1))
 	var loaded := Dictionary(data.get("active_jobs", {}))
 	for key in loaded.keys():
 		active_jobs[int(key)] = Dictionary(loaded[key]).duplicate(true)
@@ -96,8 +111,12 @@ func _complete_job(survivor_id: int) -> void:
 	var task := String(job.get("task", "Rest"))
 	var message := _apply_reward(survivor_id, task)
 	if task == "Scavenge" and String(job.get("location", "")) != "":
-		SurvivorManager.assign_task(survivor_id, "Rest")
-		start_task(survivor_id, "Rest")
+		var party_ids := Array(job.get("party_ids", [survivor_id]))
+		for raw_id in party_ids:
+			var party_id := int(raw_id)
+			active_jobs.erase(party_id)
+			SurvivorManager.assign_task(party_id, "Rest")
+			start_task(party_id, "Rest")
 		job_completed.emit(survivor_id, task, message)
 		return
 	job["progress"] = 0.0
@@ -126,8 +145,9 @@ func _apply_reward(survivor_id: int, task: String) -> String:
 		"Scavenge":
 			var location := String(job.get("location", ""))
 			if location != "":
-				var result := ScavengeManager.run_scavenge(location, survivor_id, false)
-				return "%s returned from %s. %s" % [survivor_name, location, result.get("message", "Scavenge complete.")]
+				var party_ids := Array(job.get("party_ids", [survivor_id]))
+				var result := ScavengeManager.run_scavenge(location, survivor_id, false, party_ids)
+				return "%s's party returned from %s. %s" % [survivor_name, location, result.get("message", "Scavenge complete.")]
 			ResourceManager.add_resource("materials", randi_range(1, 4))
 			ResourceManager.add_resource("noise", 1)
 			return "%s hauled in useful salvage." % survivor_name
