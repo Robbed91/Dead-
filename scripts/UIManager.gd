@@ -59,6 +59,7 @@ var resource_row: HBoxContainer
 var colony_strip: HBoxContainer
 var phase_label: Label
 var objective_body: Label
+var campaign_box: VBoxContainer
 var alerts_box: VBoxContainer
 var event_log_box: VBoxContainer
 var estate_board: Control
@@ -188,11 +189,15 @@ func _build_middle(root: VBoxContainer) -> void:
 	_build_right_panel(right)
 
 func _build_left_panel(left: VBoxContainer) -> void:
-	var objective := _add_panel(left, Vector2(0, 92))
+	var objective := _add_panel(left, Vector2(0, 150))
 	objective.add_child(_label("CURRENT OBJECTIVE", 13, GREEN))
 	objective_body = _label("", 13, TEXT)
 	objective_body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	objective.add_child(objective_body)
+	objective.add_child(_label("CAMPAIGN", 11, ORANGE))
+	campaign_box = VBoxContainer.new()
+	campaign_box.add_theme_constant_override("separation", 2)
+	objective.add_child(campaign_box)
 
 	var alerts := _add_panel(left, Vector2(0, 80))
 	alerts.add_child(_label("ALERTS", 13, RED))
@@ -673,6 +678,7 @@ func _refresh_top_bar() -> void:
 
 func _refresh_alerts() -> void:
 	objective_body.text = "%s\n%s" % [GameManager.current_objective, GameManager.get_colony_growth_summary()]
+	_refresh_campaign_box()
 	_clear(alerts_box)
 	var r := ResourceManager.resources
 	var alerts: Array = []
@@ -688,6 +694,16 @@ func _refresh_alerts() -> void:
 		alerts.append(["PERIMETER QUIET", GREEN])
 	for alert in alerts:
 		alerts_box.add_child(_label(String(alert[0]), 11, alert[1]))
+
+func _refresh_campaign_box() -> void:
+	if campaign_box == null:
+		return
+	_clear(campaign_box)
+	for milestone in GameManager.get_campaign_milestones():
+		var done := bool(milestone.get("done", false))
+		var marker := "[x]" if done else "[ ]"
+		var color := GREEN if done else MUTED
+		campaign_box.add_child(_label("%s %s: %s" % [marker, String(milestone["label"]), String(milestone["detail"])], 10, color))
 
 func _refresh_log() -> void:
 	if event_log_box == null:

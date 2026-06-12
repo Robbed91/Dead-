@@ -282,6 +282,36 @@ func get_colony_growth_summary() -> String:
 		return "%s: %d survivors, %d controlled buildings, crew %d/%d. The estate has become a survivor city." % [tier["name"], population, buildings, crew, crew_limit]
 	return "%s: %d/%d survivors, %d/%d buildings, crew %d/%d toward %s." % [tier["name"], population, int(next["population"]), buildings, int(next["buildings"]), crew, crew_limit, next["name"]]
 
+func get_campaign_milestones() -> Array:
+	var population := SurvivorManager.get_population_count()
+	var buildings := BuildingManager.count_controlled_buildings()
+	var day := ResourceManager.get_value("day_number")
+	var next: Dictionary = get_next_colony_tier()
+	var current_stage := String(get_colony_tier().get("name", "Hideout"))
+	var next_stage := "City" if next.is_empty() else String(next["name"])
+	return [
+		{
+			"label": "Stage",
+			"done": colony_tier_index >= COLONY_TIERS.size() - 1,
+			"detail": "%s -> %s" % [current_stage, next_stage]
+		},
+		{
+			"label": "People",
+			"done": population >= 30,
+			"detail": "%d/30 survivors" % population
+		},
+		{
+			"label": "Estate",
+			"done": buildings >= 9,
+			"detail": "%d/9 buildings" % buildings
+		},
+		{
+			"label": "Holdout",
+			"done": day >= 30,
+			"detail": "Day %d/30" % day
+		}
+	]
+
 func _on_activity_job_completed(_survivor_id: int, _task: String, message: String) -> void:
 	add_log(message)
 	_update_objective()

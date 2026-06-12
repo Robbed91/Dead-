@@ -102,6 +102,17 @@ func _run() -> void:
 	_assert_true(not loaded.is_empty(), "save file can be loaded")
 	_assert_eq(ResourceManager.get_value("food"), food_before_save, "saved resources restore correctly")
 
+	_prepare_victory_state()
+	var milestones := GameManager.get_campaign_milestones()
+	_assert_eq(milestones.size(), 4, "campaign milestones report the four victory tracks")
+	_assert_true(bool(milestones[1].get("done", false)), "population milestone can be completed")
+	_assert_true(bool(milestones[2].get("done", false)), "estate control milestone can be completed")
+	var victory_result := GameManager.end_day()
+	_assert_true(GameManager.is_game_over(), "victory sets game over state")
+	_assert_true(String(GameManager.game_over_message).contains("Victory"), "victory message is recorded")
+	_assert_true(String(victory_result.get("message", "")).contains("Night Report"), "victory day still returns a night report")
+	GameManager.new_game()
+
 	var day_before := ResourceManager.get_value("day_number")
 	var night_result := GameManager.end_day()
 	_assert_eq(ResourceManager.get_value("day_number"), day_before + 1, "end day advances the day")
@@ -163,3 +174,30 @@ func _location(location_name: String) -> Dictionary:
 		if String(location.get("name", "")) == location_name:
 			return location
 	return {}
+
+func _prepare_victory_state() -> void:
+	ResourceManager.set_value("food", 600)
+	ResourceManager.set_value("water", 600)
+	ResourceManager.set_value("materials", 600)
+	ResourceManager.set_value("medicine", 100)
+	ResourceManager.set_value("ammo", 200)
+	ResourceManager.set_value("fuel", 100)
+	ResourceManager.set_value("power", 100)
+	ResourceManager.set_value("morale", 90)
+	ResourceManager.set_value("security", 100)
+	ResourceManager.set_value("noise", 0)
+	ResourceManager.set_value("horde_threat", 0)
+	ResourceManager.set_value("infection_risk", 0)
+	ResourceManager.set_value("beds", 35)
+	ResourceManager.set_value("day_number", 29)
+	for index in range(29):
+		var recruit := SurvivorManager.generate_recruit()
+		SurvivorManager.invite_recruit(recruit)
+	for building in BuildingManager.buildings:
+		building["status"] = "Operational"
+		building["condition"] = 100
+		building["security"] = 90
+		building["infestation"] = 0
+		if String(building.get("current_use", "None")) == "None":
+			building["current_use"] = "Storage"
+	GameManager.call("_update_colony_tier", false)
