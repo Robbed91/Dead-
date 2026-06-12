@@ -14,6 +14,10 @@ const BLUE := Color("#4aa3df")
 const YELLOW := Color("#d9aa38")
 const TEXT := Color("#e8e0d2")
 const MUTED := Color("#91a0a6")
+const GAMEPLAY_MARGIN_LEFT := 6.0
+const GAMEPLAY_MARGIN_TOP := 5.0
+const GAMEPLAY_MARGIN_RIGHT := 6.0
+const GAMEPLAY_MARGIN_BOTTOM := 38.0
 const HIDEOUT_BACKGROUND := preload("res://assets/backgrounds/hideout.png")
 const CAMP_BACKGROUND := preload("res://assets/backgrounds/camp.png")
 const COMMUNITY_BACKGROUND := preload("res://assets/backgrounds/community.png")
@@ -320,10 +324,11 @@ func _apply_safe_area_layout() -> void:
 	if root_container == null:
 		return
 	var margins := _safe_area_margins()
-	root_container.offset_left = 6.0 + margins.x
-	root_container.offset_top = 5.0 + margins.y
-	root_container.offset_right = -6.0 - margins.z
-	root_container.offset_bottom = -8.0 - margins.w
+	var bottom_gutter: float = maxf(GAMEPLAY_MARGIN_BOTTOM, margins.w + 18.0)
+	root_container.offset_left = GAMEPLAY_MARGIN_LEFT + margins.x
+	root_container.offset_top = GAMEPLAY_MARGIN_TOP + margins.y
+	root_container.offset_right = -GAMEPLAY_MARGIN_RIGHT - margins.z
+	root_container.offset_bottom = -bottom_gutter
 	if quick_bar != null:
 		quick_bar.offset_left = -96.0 - margins.z
 		quick_bar.offset_top = 66.0 + margins.y
