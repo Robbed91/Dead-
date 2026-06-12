@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      GODOT_VERSION: 4.2.2
+      GODOT_VERSION: 4.6.3
       GODOT_RELEASE: stable
       EXPORT_PRESET: Android Debug
       APK_PATH: export/dead-shift-debug.apk
@@ -97,6 +97,14 @@ jobs:
       - name: Import project once
         run: |
           ./godot --headless --path . --quit
+
+      - name: Run gameplay smoke test
+        run: |
+          ./godot --headless --path . -s tests/SmokeTest.gd
+
+      - name: Run phone viewport UI test
+        run: |
+          ./godot --headless --path . -s tests/SceneUiTest.gd
 
       - name: Export debug APK
         timeout-minutes: 20

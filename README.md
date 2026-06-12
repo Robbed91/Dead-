@@ -141,6 +141,8 @@ Set it to **Landscape** if you change it later.
 6. Download the `dead-shift-debug-apk` artifact.
 7. Extract the downloaded ZIP to get `dead-shift-debug.apk`.
 
+The workflow uses Godot 4.6.3 stable to match this project, runs the gameplay smoke test and phone viewport UI test, then exports the Android debug APK artifact.
+
 Android will warn that the APK is from outside the Play Store. That is expected for local debug testing.
 
 ### From Godot Locally
