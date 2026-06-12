@@ -17,7 +17,7 @@ compatibility/default_parent_skeleton_in_mesh_instance_3d=true
 config/name="Dead Shift"
 run/main_scene="res://scenes/MainMenu.tscn"
 config/features=PackedStringArray("4.6", "Mobile")
-config/icon="res://assets/placeholders/icon.svg"
+config/icon="res://assets/icons/dead_shift_icon_192.png"
 
 [autoload]
 
