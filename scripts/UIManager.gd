@@ -377,10 +377,14 @@ func _draw_estate_map(map: Control) -> void:
 		_draw_building_detail(map, building, rect)
 
 func _draw_building_detail(map: Control, building: Dictionary, rect: Rect2) -> void:
+	var type_color := _building_type_color(String(building.get("type", "")))
 	var roof := Rect2(rect.position + Vector2(0, 3), Vector2(rect.size.x, max(6.0, rect.size.y * 0.16)))
 	map.draw_rect(roof, Color("#050607").lightened(0.08), true)
+	map.draw_rect(Rect2(rect.position + Vector2(3, rect.size.y * 0.18), Vector2(rect.size.x - 6, rect.size.y * 0.58)), Color(type_color.r, type_color.g, type_color.b, 0.10), true)
+	_draw_facade_lines(map, building, rect, type_color)
 	var use_icon_pos := rect.position + rect.size * Vector2(0.16, 0.31)
 	_draw_building_use_icon(map, String(building.get("current_use", "")), use_icon_pos, minf(rect.size.x, rect.size.y) * 0.12)
+	_draw_building_signage(map, building, rect, type_color)
 	var condition: float = clampf(float(building.get("condition", 0)) / 100.0, 0.0, 1.0)
 	var security: float = clampf(float(building.get("security", 0)) / 100.0, 0.0, 1.0)
 	var infestation: float = clampf(float(building.get("infestation", 0)) / 100.0, 0.0, 1.0)
@@ -396,6 +400,75 @@ func _draw_building_detail(map: Control, building: Dictionary, rect: Rect2) -> v
 	if String(building.get("status", "")) == "Infested":
 		_draw_zombie_silhouette(map, rect.position + rect.size * Vector2(0.78, 0.68), 0.75, RED)
 
+func _draw_facade_lines(map: Control, building: Dictionary, rect: Rect2, type_color: Color) -> void:
+	var status := String(building.get("status", "Unknown"))
+	if status == "Unknown":
+		return
+	var line_color := Color(0.85, 0.88, 0.82, 0.22)
+	var slots := clampi(int(rect.size.x / 22.0), 2, 6)
+	for index in range(slots):
+		var x := rect.position.x + rect.size.x * (float(index + 1) / float(slots + 1))
+		map.draw_line(Vector2(x, rect.position.y + rect.size.y * 0.22), Vector2(x, rect.position.y + rect.size.y * 0.68), line_color, 1)
+	match String(building.get("type", "")):
+		"Base", "Crafting", "Supplies":
+			for row in range(2):
+				var y := rect.position.y + rect.size.y * (0.34 + float(row) * 0.16)
+				map.draw_line(Vector2(rect.position.x + 8, y), Vector2(rect.position.x + rect.size.x - 8, y), Color(type_color.r, type_color.g, type_color.b, 0.28), 2)
+		"Medical":
+			var center := rect.position + rect.size * Vector2(0.73, 0.42)
+			map.draw_line(center + Vector2(-8, 0), center + Vector2(8, 0), GREEN.lightened(0.2), 3)
+			map.draw_line(center + Vector2(0, -8), center + Vector2(0, 8), GREEN.lightened(0.2), 3)
+		"Vehicle":
+			var bay := Rect2(rect.position + rect.size * Vector2(0.42, 0.38), rect.size * Vector2(0.42, 0.32))
+			map.draw_rect(bay, Color(0.0, 0.0, 0.0, 0.34), true)
+			map.draw_rect(bay, type_color.lightened(0.1), false, 2)
+		"Defence":
+			var tower_base := rect.position + rect.size * Vector2(0.75, 0.68)
+			map.draw_line(tower_base, tower_base + Vector2(-14, -30), RED.lightened(0.15), 2)
+			map.draw_line(tower_base, tower_base + Vector2(14, -30), RED.lightened(0.15), 2)
+			map.draw_line(tower_base + Vector2(-18, -30), tower_base + Vector2(18, -30), RED.lightened(0.15), 2)
+		"Food":
+			for crate in range(3):
+				var crate_pos := rect.position + rect.size * Vector2(0.48 + float(crate) * 0.11, 0.58)
+				map.draw_rect(Rect2(crate_pos, Vector2(10, 8)), YELLOW.darkened(0.2), true)
+		"Living":
+			for window in range(3):
+				var window_pos := rect.position + rect.size * Vector2(0.42 + float(window) * 0.14, 0.36)
+				map.draw_rect(Rect2(window_pos, Vector2(9, 12)), BLUE.darkened(0.2), true)
+
+func _draw_building_signage(map: Control, building: Dictionary, rect: Rect2, type_color: Color) -> void:
+	if String(building.get("status", "")) == "Unknown":
+		return
+	var name_words := String(building.get("name", "")).split(" ")
+	var initials := ""
+	for word in name_words:
+		if String(word).length() > 0:
+			initials += String(word).substr(0, 1)
+		if initials.length() >= 2:
+			break
+	var sign_rect := Rect2(rect.position + Vector2(rect.size.x * 0.38, rect.size.y * 0.18), Vector2(rect.size.x * 0.34, maxf(15.0, rect.size.y * 0.16)))
+	map.draw_rect(sign_rect, Color(0.0, 0.0, 0.0, 0.58), true)
+	map.draw_rect(sign_rect, type_color, false, 1)
+	map.draw_string(ThemeDB.fallback_font, sign_rect.position + Vector2(4, sign_rect.size.y - 4), initials, HORIZONTAL_ALIGNMENT_LEFT, sign_rect.size.x - 8, max(9, int(sign_rect.size.y * 0.72)), TEXT)
+
+func _building_type_color(type_name: String) -> Color:
+	match type_name:
+		"Base":
+			return ORANGE
+		"Crafting", "Supplies", "Loot":
+			return YELLOW
+		"Medical":
+			return GREEN
+		"Vehicle":
+			return BLUE
+		"Defence":
+			return RED
+		"Food":
+			return Color("#b8a34a")
+		"Living":
+			return Color("#7ea2b8")
+	return MUTED
+
 func _draw_expansion_marker(map: Control, building: Dictionary, rect: Rect2) -> void:
 	var pulse := 0.55 + (sin(ambient_time * 2.8 + float(building.get("id", 0))) + 1.0) * 0.15
 	var center := rect.position + rect.size * 0.5
@@ -403,6 +476,7 @@ func _draw_expansion_marker(map: Control, building: Dictionary, rect: Rect2) -> 
 	map.draw_circle(center, 18.0, Color(0.0, 0.0, 0.0, 0.52))
 	map.draw_circle(center, 13.0 + pulse * 2.0, Color(color.r, color.g, color.b, 0.32))
 	map.draw_circle(center, 4.0, color)
+	map.draw_string(ThemeDB.fallback_font, center + Vector2(-4, 5), "?", HORIZONTAL_ALIGNMENT_CENTER, 8, 13, TEXT)
 
 func _draw_growth_perimeter(map: Control) -> void:
 	var map_size := map.size
@@ -1269,9 +1343,15 @@ func _show_tutorial() -> void:
 
 func _show_modal(title_text: String, panel_size: Vector2) -> VBoxContainer:
 	_dismiss_modal()
+	var viewport_size: Vector2 = get_viewport_rect().size
+	var clamped_size := Vector2(
+		minf(panel_size.x, maxf(300.0, viewport_size.x - 64.0)),
+		minf(panel_size.y, maxf(220.0, viewport_size.y - 64.0))
+	)
 	modal_overlay = ColorRect.new()
 	modal_overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
 	modal_overlay.color = Color(0, 0, 0, 0.72)
+	modal_overlay.mouse_filter = Control.MOUSE_FILTER_STOP
 	add_child(modal_overlay)
 	modal_overlay.move_to_front()
 
@@ -1283,10 +1363,12 @@ func _show_modal(title_text: String, panel_size: Vector2) -> VBoxContainer:
 	center.offset_bottom = -24
 	modal_overlay.add_child(center)
 
-	var framed := _create_panel(panel_size)
+	var framed := _create_panel(clamped_size)
 	var panel: PanelContainer = framed["panel"]
 	panel.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	panel.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	panel.custom_minimum_size = clamped_size
+	panel.size = clamped_size
 	center.add_child(panel)
 
 	var box: VBoxContainer = framed["box"]
@@ -1585,7 +1667,29 @@ func _draw_survivor_icon(node: Control, survivor: Dictionary, compact: bool) -> 
 	var body_size := Vector2(head_radius * 2.4, icon_size.y * (0.34 if compact else 0.42))
 	node.draw_rect(Rect2(body_top, body_size), coat, true)
 	node.draw_rect(Rect2(body_top, body_size), outline, false, 1)
+	_draw_task_tool(node, task, center + Vector2(head_radius * 1.7, body_size.y * 0.55), role_color, compact)
 	_draw_role_mark(node, survivor, center + Vector2(0, body_size.y * 0.95), accent, compact)
+
+func _draw_task_tool(node: Control, task: String, pos: Vector2, color: Color, compact: bool) -> void:
+	var tool_scale := 0.65 if compact else 0.95
+	match task:
+		"Guard":
+			node.draw_line(pos + Vector2(-2, 7) * tool_scale, pos + Vector2(6, -9) * tool_scale, RED.lightened(0.1), 2)
+			node.draw_rect(Rect2(pos + Vector2(4, -11) * tool_scale, Vector2(5, 8) * tool_scale), RED.darkened(0.1), true)
+		"Build", "Repair":
+			node.draw_line(pos + Vector2(-7, 8) * tool_scale, pos + Vector2(7, -7) * tool_scale, ORANGE.lightened(0.1), 3)
+			node.draw_rect(Rect2(pos + Vector2(2, -10) * tool_scale, Vector2(8, 4) * tool_scale), ORANGE.lightened(0.1), true)
+		"Medical":
+			node.draw_line(pos + Vector2(-6, 0) * tool_scale, pos + Vector2(6, 0) * tool_scale, GREEN.lightened(0.2), 2)
+			node.draw_line(pos + Vector2(0, -6) * tool_scale, pos + Vector2(0, 6) * tool_scale, GREEN.lightened(0.2), 2)
+		"Cook":
+			node.draw_circle(pos, 5.0 * tool_scale, YELLOW)
+			node.draw_line(pos + Vector2(4, -4) * tool_scale, pos + Vector2(8, -9) * tool_scale, YELLOW, 2)
+		"Scavenge", "Scout":
+			node.draw_rect(Rect2(pos + Vector2(-6, -6) * tool_scale, Vector2(12, 12) * tool_scale), BLUE.darkened(0.15), false, 2)
+			node.draw_line(pos + Vector2(-3, 0) * tool_scale, pos + Vector2(4, -4) * tool_scale, BLUE.lightened(0.1), 2)
+		_:
+			node.draw_circle(pos, 3.0 * tool_scale, color.lightened(0.12))
 
 func _skin_color(id: int) -> Color:
 	var tones := [Color("#c79a74"), Color("#8f6045"), Color("#e0b084"), Color("#a87555"), Color("#d0a17a")]

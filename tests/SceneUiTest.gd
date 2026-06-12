@@ -17,6 +17,13 @@ func _run() -> void:
 	_assert_true(game.get_child_count() >= 3, "Game scene builds visible UI children")
 	_assert_true(_has_button_text(game, "MENU"), "Game scene contains menu button")
 	_assert_true(_has_label_text(game, "DEAD SHIFT"), "Game scene contains title label")
+	game.call("_show_scavenge_popup")
+	await process_frame
+	var modal_panel := _largest_panel(game)
+	_assert_true(modal_panel != null, "Scavenge popup creates an in-game modal panel")
+	if modal_panel != null:
+		var viewport_size: Vector2 = game.get_viewport_rect().size
+		_assert_true(modal_panel.size.x <= viewport_size.x and modal_panel.size.y <= viewport_size.y, "Modal panel remains inside current viewport")
 	game.queue_free()
 
 	var menu_scene := load("res://scenes/MainMenu.tscn") as PackedScene
@@ -57,6 +64,18 @@ func _has_label_text(node: Node, text: String) -> bool:
 		if _has_label_text(child, text):
 			return true
 	return false
+
+func _largest_panel(node: Node) -> PanelContainer:
+	var best: PanelContainer = null
+	if node is PanelContainer:
+		best = node
+	for child in node.get_children():
+		var candidate := _largest_panel(child)
+		if candidate == null:
+			continue
+		if best == null or candidate.size.length_squared() > best.size.length_squared():
+			best = candidate
+	return best
 
 func _assert_true(value: bool, message: String) -> void:
 	if not value:

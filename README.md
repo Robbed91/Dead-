@@ -186,20 +186,20 @@ On desktop test runs, the exact folder is platform-specific and can be inspected
 
 ## Known Limitations
 
-- UI art is still prototype art: a generated main-menu backdrop plus procedural in-game panels, icons, lights, horde markers, and building cards.
+- Art is prototype-ready rather than commercial final: generated stage backdrops plus procedural in-game buildings, facades, survivor sprites, role marks, location cards, lights, horde markers, and UI icons.
 - Combat is formula-based with night-attack visual feedback, not direct tactical combat.
 - Scavenging has timed survivor expeditions, but no multi-person expedition planning yet.
 - Building assignment and building-use bonuses are intentionally simple.
 - Crafting is a small prototype tab, not a full production chain.
-- Facility upgrades are functional, but do not yet have unique artwork per building.
-- Survivor movement is token-based rather than full sprite pathfinding.
-- No final audio, final character portraits, or final environment art yet.
+- Facility upgrades are functional, but upgrade visuals are still represented by building stats and icons rather than bespoke construction art.
+- Survivor movement is animated token movement around colony buildings rather than full tactical pathfinding.
+- No final audio or music yet.
 - Android export still requires local Godot export templates, SDK, JDK, and signing configuration.
 
 ## Suggested Next Phase
 
-- Replace procedural building blocks with hand-authored or generated building art per lot.
-- Add proper survivor portrait art and larger animated character sprites.
+- Replace procedural building facades with hand-authored or generated production art per lot.
+- Add larger survivor sprites and bespoke portrait art for named story survivors.
 - Add multi-survivor scavenging, expedition loadouts, and vehicle use.
 - Expand crafting into weapons, barricades, traps, and facility upgrades.
 - Add more event variety: alarms, trader visits, sickness, disputes, weather, horde warnings, and survivor relationship moments.
