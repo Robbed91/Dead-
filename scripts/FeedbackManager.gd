@@ -28,7 +28,7 @@ func warning() -> void:
 func _vibrate(milliseconds: int) -> void:
 	if milliseconds <= 0:
 		return
-	DisplayServer.vibrate_handheld(milliseconds)
+	Input.vibrate_handheld(milliseconds)
 
 func _play_tone(frequency: float, duration: float, amplitude: float) -> void:
 	if player == null or not SaveManager.is_sound_enabled():
