@@ -26,6 +26,7 @@ This is the practical definition of a complete testable V1, separate from a comm
 - End-of-day events include trader, alarm, repair, sickness, radio, kitchen, weather, and resource moments.
 - Larger colonies now consume more support resources and suffer overcrowding if beds are short.
 - Crafting uses facility-gated recipes for ammo, medicine, water, fuel, tools, and upgrades; radio, assignment, and building-management controls are disabled or hidden when unavailable.
+- Assigned crew improve daily building bonuses, including workshop production, watch-post security, medical care, food prep, radio watch, and quarantine.
 - First-run tutorial overlay explains the core loop and can be reopened from the in-game menu.
 - Settings/reset/credits and game prompts use in-game modals instead of native popups.
 - Main menu, settings, and game dashboard apply safe-area margins so Android cutouts/navigation areas have less chance of covering controls.

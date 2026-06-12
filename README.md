@@ -189,7 +189,7 @@ On desktop test runs, the exact folder is platform-specific and can be inspected
 - Art is prototype-ready rather than commercial final: generated stage backdrops plus procedural in-game buildings, facades, survivor sprites, role marks, location cards, lights, horde markers, and UI icons.
 - Combat is formula-based with night-attack visual feedback, not direct tactical combat.
 - Scavenging has timed solo and party expeditions with party-size selection, shared return timing, location depletion, cooldown, injury/infection risk, loot, and survivor encounters.
-- Building assignment and building-use bonuses are intentionally simple.
+- Building assignment now affects daily building output, with staffed workshops, watch posts, clinics, kitchens, radio rooms, and quarantine spaces producing stronger bonuses.
 - Crafting is a facility-gated recipe system for ammo, medicine, water, fuel, tools, and upgrades; it is not yet a deep factory/production-chain simulation.
 - Facility upgrades are functional, but upgrade visuals are still represented by building stats and icons rather than bespoke construction art.
 - Survivor movement is animated token movement around colony buildings rather than full tactical pathfinding.

@@ -90,25 +90,38 @@ func apply_use_bonuses() -> Array:
 	for building in buildings:
 		if not is_controlled(building):
 			continue
+		var staff_count := _assigned_living_count(building)
 		match building.get("current_use", "None"):
 			"Sleeping Quarters":
 				ResourceManager.set_value("beds", max(ResourceManager.get_value("beds"), 6 + int(building.get("capacity", 0))))
 			"Watch Post":
-				ResourceManager.add_resource("security", 2)
-				messages.append("%s watch post improved perimeter security." % building["name"])
+				var security_gain := 2 + staff_count
+				ResourceManager.add_resource("security", security_gain)
+				messages.append("%s watch post improved perimeter security (+%d)." % [building["name"], security_gain])
 			"Medical Bay":
-				ResourceManager.add_resource("infection_risk", -2)
-				messages.append("%s medical bay reduced infection risk." % building["name"])
+				var treatment := 2 + staff_count
+				ResourceManager.add_resource("infection_risk", -treatment)
+				messages.append("%s medical bay reduced infection risk (-%d)." % [building["name"], treatment])
 			"Food Prep":
 				ResourceManager.add_resource("morale", 1)
+				if staff_count > 0:
+					ResourceManager.add_resource("food", staff_count)
+					messages.append("%s prepared extra meals (+%d food)." % [building["name"], staff_count])
 			"Workshop":
-				ResourceManager.add_resource("materials", 2)
+				var material_gain := 2 + staff_count
+				ResourceManager.add_resource("materials", material_gain)
+				messages.append("%s workshop produced +%d materials." % [building["name"], material_gain])
 			"Storage":
-				ResourceManager.add_resource("materials", 1)
+				var storage_gain := 1 + int(floor(float(staff_count) / 2.0))
+				ResourceManager.add_resource("materials", storage_gain)
 			"Radio Room":
-				ResourceManager.add_resource("horde_threat", -1)
+				var radio_gain := 1 + staff_count
+				ResourceManager.add_resource("horde_threat", -radio_gain)
+				messages.append("%s radio watch reduced horde threat (-%d)." % [building["name"], radio_gain])
 			"Quarantine":
-				ResourceManager.add_resource("infection_risk", -1)
+				var quarantine_gain := 1 + staff_count
+				ResourceManager.add_resource("infection_risk", -quarantine_gain)
+				messages.append("%s quarantine reduced infection risk (-%d)." % [building["name"], quarantine_gain])
 		for upgrade_id in Array(building.get("upgrades", [])):
 			match String(upgrade_id):
 				"rain_catchers":
@@ -340,3 +353,10 @@ func _remove_survivor_from_buildings(survivor_id: int, except_building_id: int =
 		if assigned.has(survivor_id):
 			assigned.erase(survivor_id)
 			building["assigned_survivors"] = assigned
+
+func _assigned_living_count(building: Dictionary) -> int:
+	var count := 0
+	for survivor_id in Array(building.get("assigned_survivors", [])):
+		if SurvivorManager.is_alive(int(survivor_id)):
+			count += 1
+	return count

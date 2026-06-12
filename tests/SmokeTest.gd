@@ -39,6 +39,10 @@ func _run() -> void:
 	_assert_true(bool(assign_billy_workshop.get("ok", false)), "can move crew survivor to another controlled building")
 	_assert_true(not Array(BuildingManager.buildings[0].get("assigned_survivors", [])).has(1), "moving survivor removes them from old building")
 	_assert_true(Array(BuildingManager.buildings[1].get("assigned_survivors", [])).has(1), "moving survivor adds them to new building")
+	var staffed_materials_before := ResourceManager.get_value("materials")
+	var staffed_messages := BuildingManager.apply_use_bonuses()
+	_assert_true(ResourceManager.get_value("materials") >= staffed_materials_before + 3, "staffed workshop produces extra materials")
+	_assert_true(_messages_contain(staffed_messages, "workshop produced"), "staffed workshop reports production")
 	var upgrade_result := GameManager.install_building_upgrade(2, "workshop_bench")
 	_assert_true(bool(upgrade_result.get("ok", false)), "can install a persistent building upgrade")
 	_assert_true(BuildingManager.get_upgrade_defence_bonus() >= 0, "upgrade defence bonus can be queried")
@@ -195,6 +199,12 @@ func _location(location_name: String) -> Dictionary:
 		if String(location.get("name", "")) == location_name:
 			return location
 	return {}
+
+func _messages_contain(messages: Array, text: String) -> bool:
+	for message in messages:
+		if String(message).contains(text):
+			return true
+	return false
 
 func _prepare_victory_state() -> void:
 	ResourceManager.set_value("food", 600)
