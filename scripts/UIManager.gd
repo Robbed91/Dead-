@@ -17,7 +17,8 @@ const MUTED := Color("#91a0a6")
 const GAMEPLAY_MARGIN_LEFT := 6.0
 const GAMEPLAY_MARGIN_TOP := 5.0
 const GAMEPLAY_MARGIN_RIGHT := 6.0
-const GAMEPLAY_MARGIN_BOTTOM := 38.0
+const GAMEPLAY_MARGIN_BOTTOM := 14.0
+const COMMAND_BAR_HEIGHT := 76.0
 const HIDEOUT_BACKGROUND := preload("res://assets/backgrounds/hideout.png")
 const CAMP_BACKGROUND := preload("res://assets/backgrounds/camp.png")
 const COMMUNITY_BACKGROUND := preload("res://assets/backgrounds/community.png")
@@ -74,6 +75,7 @@ var command_body: HBoxContainer
 var selected_building_label: Label
 var night_preview_label: Label
 var end_day_button: Button
+var command_bar: HBoxContainer
 var quick_bar: HBoxContainer
 var modal_overlay: Control
 var root_container: VBoxContainer
@@ -143,7 +145,7 @@ func _build_layout() -> void:
 
 	_build_top_bar(root)
 	_build_middle(root)
-	_build_command_bar(root)
+	_build_command_bar()
 	_build_quick_bar()
 	_apply_safe_area_layout()
 
@@ -260,12 +262,14 @@ func _build_right_panel(right: VBoxContainer) -> void:
 	prep.pressed.connect(_show_defence_popup)
 	defence.add_child(prep)
 
-func _build_command_bar(root: VBoxContainer) -> void:
+func _build_command_bar() -> void:
 	var bottom := HBoxContainer.new()
+	command_bar = bottom
 	bottom.name = "BottomCommandBar"
-	bottom.custom_minimum_size = Vector2(0, 76)
+	bottom.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
+	bottom.custom_minimum_size = Vector2(0, COMMAND_BAR_HEIGHT)
 	bottom.add_theme_constant_override("separation", 4)
-	root.add_child(bottom)
+	add_child(bottom)
 
 	var tabs := _add_panel(bottom, Vector2(288, 0))
 	tabs.add_child(_label("BUILD & MANAGE", 10, TEXT))
@@ -324,11 +328,17 @@ func _apply_safe_area_layout() -> void:
 	if root_container == null:
 		return
 	var margins := _safe_area_margins()
-	var bottom_gutter: float = maxf(GAMEPLAY_MARGIN_BOTTOM, margins.w + 18.0)
+	var bottom_gutter: float = maxf(GAMEPLAY_MARGIN_BOTTOM, margins.w + 10.0)
+	var command_top: float = bottom_gutter + COMMAND_BAR_HEIGHT
 	root_container.offset_left = GAMEPLAY_MARGIN_LEFT + margins.x
 	root_container.offset_top = GAMEPLAY_MARGIN_TOP + margins.y
 	root_container.offset_right = -GAMEPLAY_MARGIN_RIGHT - margins.z
-	root_container.offset_bottom = -bottom_gutter
+	root_container.offset_bottom = -command_top - 4.0
+	if command_bar != null:
+		command_bar.offset_left = GAMEPLAY_MARGIN_LEFT + margins.x
+		command_bar.offset_top = -command_top
+		command_bar.offset_right = -GAMEPLAY_MARGIN_RIGHT - margins.z
+		command_bar.offset_bottom = -bottom_gutter
 	if quick_bar != null:
 		quick_bar.offset_left = -96.0 - margins.z
 		quick_bar.offset_top = 66.0 + margins.y
