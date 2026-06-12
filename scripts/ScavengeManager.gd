@@ -14,40 +14,40 @@ func reset() -> void:
 	_normalize_locations()
 
 func run_scavenge(location_name: String, survivor_id: int, assign_task := true, party_ids: Array = []) -> Dictionary:
-	var location := _find_location(location_name)
-	var availability := _availability_for_location(location, location_name)
+	var location: Dictionary = _find_location(location_name)
+	var availability: Dictionary = _availability_for_location(location, location_name)
 	if not bool(availability.get("ok", false)):
 		return availability
 	if party_ids.is_empty():
 		party_ids = [survivor_id]
-	var party_size := max(1, party_ids.size())
+	var party_size: int = maxi(1, party_ids.size())
 	if assign_task:
 		for party_id in party_ids:
 			SurvivorManager.assign_task(int(party_id), "Scavenge")
-	var danger := _danger_value(location["danger"])
-	var alarm := _alarm_value(location["alarm_risk"])
-	var loot := _roll_loot(location, party_size)
-	var noise := randi_range(3, 8) + alarm + max(0, party_size - 1) * 2
-	var injury_roll := randi_range(1, 100)
-	var infection_roll := randi_range(1, 100)
-	var injury_chance: int = max(danger * 6, danger * 12 - max(0, party_size - 1) * 4)
-	var infection_chance: int = max(danger * 3, danger * 5 - max(0, party_size - 1) * 2)
-	var injury := injury_roll <= injury_chance
-	var infection := infection_roll <= infection_chance
-	var recruit := {}
+	var danger: int = _danger_value(String(location["danger"]))
+	var alarm: int = _alarm_value(String(location["alarm_risk"]))
+	var loot: Dictionary = _roll_loot(location, party_size)
+	var noise: int = randi_range(3, 8) + alarm + maxi(0, party_size - 1) * 2
+	var injury_roll: int = randi_range(1, 100)
+	var infection_roll: int = randi_range(1, 100)
+	var injury_chance: int = maxi(danger * 6, danger * 12 - maxi(0, party_size - 1) * 4)
+	var infection_chance: int = maxi(danger * 3, danger * 5 - maxi(0, party_size - 1) * 2)
+	var injury: bool = injury_roll <= injury_chance
+	var infection: bool = infection_roll <= infection_chance
+	var recruit: Dictionary = {}
 
 	for key in loot:
 		ResourceManager.add_resource(key, int(loot[key]))
 	ResourceManager.add_resource("noise", noise)
 
-	var injured_survivor := {}
+	var injured_survivor: Dictionary = {}
 	if injury:
-		var injured_id := int(party_ids.pick_random())
+		var injured_id: int = int(party_ids.pick_random())
 		injured_survivor = SurvivorManager.injure_survivor(injured_id, randi_range(8, 24), 8 if infection else 0)
 		ResourceManager.add_resource("morale", -2)
 	if infection:
 		ResourceManager.add_resource("infection_risk", 2)
-	var recruit_chance := 20
+	var recruit_chance: int = 20
 	if SurvivorManager.get_population_count() <= 1:
 		recruit_chance = 65
 	elif SurvivorManager.get_population_count() <= 3:
@@ -57,13 +57,13 @@ func run_scavenge(location_name: String, survivor_id: int, assign_task := true, 
 		recruit = SurvivorManager.generate_recruit()
 	_update_location_after_scavenge(location, danger, alarm)
 
-	var message := "%s scavenged by %d survivor(s): %s. Noise +%d. Supplies %d%%." % [location_name, party_size, _loot_text(loot), noise, int(location.get("remaining", 0))]
+	var message: String = "%s scavenged by %d survivor(s): %s. Noise +%d. Supplies %d%%." % [location_name, party_size, _loot_text(loot), noise, int(location.get("remaining", 0))]
 	if injury and not injured_survivor.is_empty():
 		message += " %s was injured." % injured_survivor.get("name", "Someone")
 	if not recruit.is_empty():
 		message += " Found survivor: %s the %s." % [recruit["name"], recruit["role"]]
 
-	var result := {
+	var result: Dictionary = {
 		"ok": true,
 		"location": location_name,
 		"loot": loot,
@@ -83,8 +83,8 @@ func can_scavenge(location_name: String) -> Dictionary:
 	return _availability_for_location(_find_location(location_name), location_name)
 
 func _roll_loot(location: Dictionary, party_size: int = 1) -> Dictionary:
-	var loot := {}
-	var keys: Array = location["loot"]
+	var loot: Dictionary = {}
+	var keys: Array = Array(location["loot"])
 	if keys.has("random"):
 		keys = ["food", "water", "materials", "medicine", "ammo", "tools", "fuel"]
 	var remaining: float = clampf(float(location.get("remaining", 100)) / 100.0, 0.15, 1.0)
@@ -114,7 +114,7 @@ func _loot_text(loot: Dictionary) -> String:
 
 func _find_location(location_name: String) -> Dictionary:
 	for location in locations:
-		if location["name"] == location_name:
+		if String(location["name"]) == location_name:
 			return location
 	return {}
 
