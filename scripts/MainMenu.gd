@@ -169,18 +169,79 @@ func _draw_backdrop(node: Control) -> void:
 		node.draw_circle(Vector2(drift + 220.0, y + 19.0), 19.0, fog)
 	for i in range(9):
 		var p := Vector2(view_size.x * (0.18 + fmod(float(i) * 0.083 + menu_time * 0.01, 0.56)), view_size.y * (0.62 + fmod(float(i) * 0.067, 0.2)))
-		_draw_menu_zombie(node, p + Vector2(0, sin(menu_time * 3.0 + float(i)) * 2.0), 0.7 + float(i % 3) * 0.1)
+		_draw_menu_zombie(node, p + Vector2(0, sin(menu_time * 3.0 + float(i)) * 2.0), 0.82 + float(i % 3) * 0.12, float(i))
+	for i in range(3):
+		var guard_pos := Vector2(view_size.x * (0.68 + float(i) * 0.055), view_size.y * (0.58 + float(i % 2) * 0.055))
+		_draw_menu_survivor(node, guard_pos, 1.0 - float(i) * 0.08, float(i))
+	_draw_menu_barricade(node, view_size)
 	var glow := 0.15 + (sin(menu_time * 4.0) + 1.0) * 0.04
 	node.draw_circle(view_size * Vector2(0.74, 0.31), 38, Color(RED.r, RED.g, RED.b, glow))
 
-func _draw_menu_zombie(node: Control, pos: Vector2, draw_scale: float) -> void:
-	var color := Color("#10161a")
-	node.draw_circle(pos + Vector2(0, -17) * draw_scale, 5.0 * draw_scale, color)
-	node.draw_line(pos + Vector2(0, -12) * draw_scale, pos + Vector2(-2, 10) * draw_scale, color, 4.0 * draw_scale)
-	node.draw_line(pos + Vector2(-2, -6) * draw_scale, pos + Vector2(-12, 2) * draw_scale, color, 3.0 * draw_scale)
-	node.draw_line(pos + Vector2(0, -5) * draw_scale, pos + Vector2(10, 4) * draw_scale, color, 3.0 * draw_scale)
-	node.draw_line(pos + Vector2(-2, 10) * draw_scale, pos + Vector2(-9, 24) * draw_scale, color, 3.0 * draw_scale)
-	node.draw_line(pos + Vector2(-1, 10) * draw_scale, pos + Vector2(7, 23) * draw_scale, color, 3.0 * draw_scale)
+func _draw_menu_zombie(node: Control, pos: Vector2, draw_scale: float, seed: float) -> void:
+	var sway: float = sin(menu_time * 2.1 + seed) * 3.0
+	var body := Color("#0b1013")
+	var edge := Color(0.72, 0.13, 0.1, 0.16)
+	var head := pos + Vector2(sway - 3.0, -30.0) * draw_scale
+	var shoulder := pos + Vector2(sway, -18.0) * draw_scale
+	var hip := pos + Vector2(sway - 4.0, 10.0) * draw_scale
+	var coat_poly: PackedVector2Array = PackedVector2Array([
+		shoulder + Vector2(-12, 0) * draw_scale,
+		shoulder + Vector2(8, -2) * draw_scale,
+		hip + Vector2(15, 18) * draw_scale,
+		hip + Vector2(0, 29) * draw_scale,
+		hip + Vector2(-17, 17) * draw_scale
+	])
+	node.draw_colored_polygon(coat_poly, body)
+	node.draw_polyline(coat_poly, edge, 1.2 * draw_scale, true)
+	node.draw_circle(head + Vector2(1, 1) * draw_scale, 7.5 * draw_scale, Color(0, 0, 0, 0.45))
+	node.draw_circle(head, 7.0 * draw_scale, body.lightened(0.05))
+	node.draw_rect(Rect2(head + Vector2(2, -1) * draw_scale, Vector2(3, 2) * draw_scale), RED.darkened(0.1), true)
+	node.draw_line(shoulder + Vector2(-10, 2) * draw_scale, shoulder + Vector2(-25, 17) * draw_scale, body, 5.0 * draw_scale)
+	node.draw_line(shoulder + Vector2(8, 1) * draw_scale, shoulder + Vector2(23, 12) * draw_scale, body, 4.5 * draw_scale)
+	node.draw_line(hip + Vector2(-7, 22) * draw_scale, hip + Vector2(-18, 45) * draw_scale, body, 5.0 * draw_scale)
+	node.draw_line(hip + Vector2(5, 23) * draw_scale, hip + Vector2(17, 43) * draw_scale, body, 5.0 * draw_scale)
+	node.draw_line(hip + Vector2(-18, 45) * draw_scale, hip + Vector2(-27, 45) * draw_scale, body, 4.0 * draw_scale)
+	node.draw_line(hip + Vector2(17, 43) * draw_scale, hip + Vector2(27, 43) * draw_scale, body, 4.0 * draw_scale)
+
+func _draw_menu_survivor(node: Control, pos: Vector2, draw_scale: float, seed: float) -> void:
+	var bob: float = sin(menu_time * 2.8 + seed) * 1.5
+	var boot := Color("#060809")
+	var coat := Color("#151b20")
+	var vest := ORANGE.darkened(0.25)
+	var skin := Color("#b9825c")
+	var head := pos + Vector2(0, -39.0 + bob) * draw_scale
+	var torso := pos + Vector2(0, -17.0 + bob) * draw_scale
+	var body_rect := Rect2(torso + Vector2(-11, -10) * draw_scale, Vector2(22, 33) * draw_scale)
+	node.draw_circle(head + Vector2(1, 2) * draw_scale, 8.8 * draw_scale, Color(0, 0, 0, 0.48))
+	node.draw_circle(head, 8.0 * draw_scale, skin.darkened(0.08))
+	node.draw_rect(Rect2(head + Vector2(-9, -9) * draw_scale, Vector2(18, 5) * draw_scale), coat.lightened(0.1), true)
+	node.draw_rect(body_rect, coat, true)
+	node.draw_rect(Rect2(body_rect.position + Vector2(3, 4) * draw_scale, Vector2(body_rect.size.x - 6.0 * draw_scale, 9.0 * draw_scale)), vest, true)
+	node.draw_line(torso + Vector2(-11, -1) * draw_scale, torso + Vector2(-27, 11) * draw_scale, coat, 5.0 * draw_scale)
+	node.draw_line(torso + Vector2(10, -1) * draw_scale, torso + Vector2(24, 6) * draw_scale, coat, 5.0 * draw_scale)
+	var weapon_start := torso + Vector2(20, -7) * draw_scale
+	var weapon_end := torso + Vector2(42, -18) * draw_scale
+	node.draw_line(weapon_start, weapon_end, Color("#2f3b42"), 4.0 * draw_scale)
+	node.draw_line(weapon_start + Vector2(8, 4) * draw_scale, weapon_end + Vector2(11, 2) * draw_scale, Color("#0a0d10"), 2.0 * draw_scale)
+	node.draw_line(torso + Vector2(-7, 21) * draw_scale, torso + Vector2(-13, 48) * draw_scale, coat.darkened(0.08), 5.0 * draw_scale)
+	node.draw_line(torso + Vector2(7, 21) * draw_scale, torso + Vector2(12, 48) * draw_scale, coat.darkened(0.08), 5.0 * draw_scale)
+	node.draw_line(torso + Vector2(-13, 48) * draw_scale, torso + Vector2(-23, 48) * draw_scale, boot, 5.0 * draw_scale)
+	node.draw_line(torso + Vector2(12, 48) * draw_scale, torso + Vector2(22, 48) * draw_scale, boot, 5.0 * draw_scale)
+
+func _draw_menu_barricade(node: Control, view_size: Vector2) -> void:
+	var base_y: float = view_size.y * 0.82
+	var start_x: float = view_size.x * 0.54
+	for plank in range(5):
+		var offset := Vector2(float(plank) * 54.0, sin(menu_time * 0.5 + float(plank)) * 1.5)
+		var p0 := Vector2(start_x, base_y) + offset
+		var p1 := p0 + Vector2(94.0, -34.0 + float(plank % 2) * 20.0)
+		node.draw_line(p0 + Vector2(2, 3), p1 + Vector2(2, 3), Color(0, 0, 0, 0.4), 12)
+		node.draw_line(p0, p1, Color("#3f2a1d"), 10)
+		node.draw_line(p0, p1, Color("#7b4b2a"), 2)
+	for post in range(4):
+		var x: float = start_x + float(post) * 96.0
+		node.draw_line(Vector2(x, base_y + 30.0), Vector2(x + 12.0, base_y - 62.0), Color("#17100b"), 12)
+		node.draw_line(Vector2(x, base_y + 30.0), Vector2(x + 12.0, base_y - 62.0), Color("#4a2f1e"), 8)
 
 func _add_button(parent: VBoxContainer, text: String, callback: Callable, accent: Color) -> Button:
 	var button := Button.new()
