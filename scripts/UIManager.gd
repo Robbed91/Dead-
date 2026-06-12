@@ -1562,6 +1562,7 @@ func _show_task_popup(survivor_id: int) -> void:
 	box.add_child(close)
 
 func _show_recruit_popup(recruit: Dictionary) -> void:
+	FeedbackManager.confirm()
 	var box := _show_modal("Survivor Found", Vector2(500, 290))
 	var message := _label("%s, %s\nHealth %d  Infection %d%%\nInvited survivors join as NPC residents. Add them to Crew if you want direct control." % [recruit["name"], recruit["role"], recruit["health"], recruit["infection_risk"]], 15, TEXT)
 	message.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -1581,6 +1582,10 @@ func _show_recruit_popup(recruit: Dictionary) -> void:
 		row.add_child(button)
 
 func _show_result(message: String) -> void:
+	if message.contains("failed") or message.contains("Lost") or message.contains("breached") or message.contains("cannot"):
+		FeedbackManager.warning()
+	else:
+		FeedbackManager.confirm()
 	var lines := message.count("\n") + 1
 	var box := _show_modal("Dead Shift", Vector2(520, 360) if lines > 3 else Vector2(420, 220))
 	var text := _label(message, 16, TEXT, HORIZONTAL_ALIGNMENT_CENTER)
@@ -1594,6 +1599,7 @@ func _show_result(message: String) -> void:
 	_refresh()
 
 func _show_game_over(message: String) -> void:
+	FeedbackManager.warning()
 	var title := "City Secured" if message.begins_with("Victory:") else "Colony Lost"
 	var box := _show_modal(title, Vector2(460, 240))
 	var text := _label(message, 16, TEXT, HORIZONTAL_ALIGNMENT_CENTER)
@@ -1919,6 +1925,7 @@ func _small_button(text: String) -> Button:
 	button.custom_minimum_size = Vector2(0, 38)
 	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	button.add_theme_font_size_override("font_size", 12)
+	button.pressed.connect(FeedbackManager.ui_tap)
 	return button
 
 func _label(text: String, size: int, color: Color, align := HORIZONTAL_ALIGNMENT_LEFT, node_name := "") -> Label:

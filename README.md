@@ -28,6 +28,7 @@ Dead Shift is a Godot 4 mobile Android prototype for a 2D zombie survival colony
 - Continue from `user://dead_shift_save.json`, including active jobs, party expeditions, buildings, resources, survivors, story recruit progress, and campaign phase.
 - Main menu shows the local save summary and disables Continue when no save exists.
 - Settings are stored separately in `user://dead_shift_settings.json`.
+- Touch feedback includes short Android vibration and generated UI tones when Sound Enabled is on.
 
 ## Project Structure
 
@@ -195,7 +196,7 @@ On desktop test runs, the exact folder is platform-specific and can be inspected
 - Crafting is a facility-gated recipe system for ammo, medicine, water, fuel, tools, and upgrades; it is not yet a deep factory/production-chain simulation.
 - Facility upgrades are functional, but upgrade visuals are still represented by building stats and icons rather than bespoke construction art.
 - Survivor movement is animated token movement around colony buildings rather than full tactical pathfinding.
-- No final audio or music yet.
+- Minimal generated UI tones and Android vibration feedback are included; no final music or ambience yet.
 - Android export still requires local Godot export templates, SDK, JDK, and signing configuration.
 
 ## Suggested Next Phase

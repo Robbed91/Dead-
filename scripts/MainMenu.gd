@@ -189,6 +189,7 @@ func _add_button(parent: VBoxContainer, text: String, callback: Callable, accent
 	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	button.add_theme_font_size_override("font_size", 18)
 	button.add_theme_color_override("font_color", accent.lightened(0.15))
+	button.pressed.connect(FeedbackManager.ui_tap)
 	button.pressed.connect(callback)
 	parent.add_child(button)
 	return button

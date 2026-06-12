@@ -137,6 +137,7 @@ func _refresh() -> void:
 
 func _on_sound_toggled(enabled: bool) -> void:
 	SaveManager.save_settings({"sound_enabled": enabled})
+	FeedbackManager.confirm()
 
 func _confirm_reset() -> void:
 	var box := _modal("Reset Save", Vector2(430, 220))
@@ -181,6 +182,7 @@ func _button(text: String, color: Color) -> Button:
 	button.custom_minimum_size = Vector2(0, 56)
 	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	button.add_theme_color_override("font_color", color.lightened(0.12))
+	button.pressed.connect(FeedbackManager.ui_tap)
 	return button
 
 func _modal(title_text: String, panel_size: Vector2) -> VBoxContainer:

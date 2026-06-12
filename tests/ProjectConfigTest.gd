@@ -14,6 +14,8 @@ func _run() -> void:
 	_assert_eq(String(ProjectSettings.get_setting("application/config/icon", "")), "res://assets/icons/dead_shift_icon_192.png", "project uses generated Dead Shift icon")
 
 	var preset_text := _read_text("res://export_presets.cfg")
+	var project_text := _read_text("res://project.godot")
+	_assert_true(project_text.contains('FeedbackManager="*res://scripts/FeedbackManager.gd"'), "feedback autoload is registered")
 	_assert_true(preset_text.contains('name="Android Debug"'), "Android Debug export preset exists")
 	_assert_true(preset_text.contains('architectures/arm64-v8a=true'), "Android export targets arm64 phones")
 	_assert_true(preset_text.contains('package/unique_name="com.prototype.deadshift"'), "Android package id is set")
