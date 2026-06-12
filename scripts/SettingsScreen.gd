@@ -11,11 +11,16 @@ const MUTED := Color("#91a0a6")
 var sound_toggle: CheckButton
 var save_summary: Label
 var modal_overlay: Control
+var root_container: HBoxContainer
 
 func _ready() -> void:
 	_build_theme()
 	_build_layout()
 	_refresh()
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_RESIZED:
+		_apply_safe_area_layout()
 
 func _build_theme() -> void:
 	var ui_theme := Theme.new()
@@ -49,11 +54,8 @@ func _build_layout() -> void:
 	add_child(bg)
 
 	var root := HBoxContainer.new()
+	root_container = root
 	root.set_anchors_preset(Control.PRESET_FULL_RECT)
-	root.offset_left = 54
-	root.offset_top = 38
-	root.offset_right = -54
-	root.offset_bottom = -38
 	root.add_theme_constant_override("separation", 24)
 	add_child(root)
 
@@ -95,6 +97,34 @@ func _build_layout() -> void:
 	actions.add_child(_label("PROJECT", 18, ORANGE))
 	_add_button(actions, "CREDITS", func(): _message("Dead Shift v1 Test Build\nBuilt with Godot 4, procedural UI art, generated estate backgrounds, and original colony systems."), MUTED)
 	_add_button(actions, "BACK", func(): get_tree().change_scene_to_file("res://scenes/MainMenu.tscn"), GREEN)
+	_apply_safe_area_layout()
+
+func _apply_safe_area_layout() -> void:
+	if root_container == null:
+		return
+	var margins := _safe_area_margins()
+	root_container.offset_left = 54.0 + margins.x
+	root_container.offset_top = 38.0 + margins.y
+	root_container.offset_right = -54.0 - margins.z
+	root_container.offset_bottom = -38.0 - margins.w
+
+func _safe_area_margins() -> Vector4:
+	var viewport_size := get_viewport_rect().size
+	if viewport_size.x <= 0.0 or viewport_size.y <= 0.0:
+		return Vector4.ZERO
+	var safe_rect := DisplayServer.get_display_safe_area()
+	if safe_rect.size.x <= 0 or safe_rect.size.y <= 0:
+		return Vector4.ZERO
+	var safe_pos := Vector2(float(safe_rect.position.x), float(safe_rect.position.y))
+	var safe_size := Vector2(float(safe_rect.size.x), float(safe_rect.size.y))
+	if safe_size.x >= viewport_size.x and safe_size.y >= viewport_size.y and safe_pos == Vector2.ZERO:
+		return Vector4.ZERO
+	return Vector4(
+		clampf(safe_pos.x, 0.0, viewport_size.x * 0.18),
+		clampf(safe_pos.y, 0.0, viewport_size.y * 0.18),
+		clampf(viewport_size.x - safe_pos.x - safe_size.x, 0.0, viewport_size.x * 0.18),
+		clampf(viewport_size.y - safe_pos.y - safe_size.y, 0.0, viewport_size.y * 0.18)
+	)
 
 func _refresh() -> void:
 	var settings := SaveManager.load_settings()
@@ -155,9 +185,15 @@ func _button(text: String, color: Color) -> Button:
 
 func _modal(title_text: String, panel_size: Vector2) -> VBoxContainer:
 	_dismiss_modal()
+	var viewport_size: Vector2 = get_viewport_rect().size
+	var clamped_size := Vector2(
+		minf(panel_size.x, maxf(300.0, viewport_size.x - 64.0)),
+		minf(panel_size.y, maxf(220.0, viewport_size.y - 64.0))
+	)
 	modal_overlay = ColorRect.new()
 	modal_overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
 	modal_overlay.color = Color(0, 0, 0, 0.72)
+	modal_overlay.mouse_filter = Control.MOUSE_FILTER_STOP
 	add_child(modal_overlay)
 	modal_overlay.move_to_front()
 	var center := CenterContainer.new()
@@ -167,7 +203,7 @@ func _modal(title_text: String, panel_size: Vector2) -> VBoxContainer:
 	center.offset_right = -24
 	center.offset_bottom = -24
 	modal_overlay.add_child(center)
-	var panel_box := _panel(center, panel_size)
+	var panel_box := _panel(center, clamped_size)
 	panel_box.add_child(_label(title_text, 22, ORANGE))
 	return panel_box
 

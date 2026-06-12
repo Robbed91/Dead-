@@ -12,6 +12,7 @@ const MENU_BACKGROUND := preload("res://assets/backgrounds/main_menu.png")
 var continue_button: Button
 var backdrop_layer: Control
 var modal_overlay: Control
+var root_container: HBoxContainer
 var menu_time := 0.0
 
 func _ready() -> void:
@@ -22,6 +23,10 @@ func _process(delta: float) -> void:
 	menu_time += delta
 	if backdrop_layer != null:
 		backdrop_layer.queue_redraw()
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_RESIZED:
+		_apply_safe_area_layout()
 
 func _build_theme() -> void:
 	var ui_theme := Theme.new()
@@ -62,11 +67,8 @@ func _build_menu() -> void:
 	add_child(backdrop)
 
 	var root := HBoxContainer.new()
+	root_container = root
 	root.set_anchors_preset(Control.PRESET_FULL_RECT)
-	root.offset_left = 54
-	root.offset_top = 36
-	root.offset_right = -54
-	root.offset_bottom = -30
 	root.add_theme_constant_override("separation", 36)
 	add_child(root)
 
@@ -125,6 +127,34 @@ func _build_menu() -> void:
 	signal_panel.add_child(_label("Willowgate Industrial Estate\nUnit 7B lockdown active\n%s" % save_text, 12, MUTED))
 	if continue_button != null:
 		continue_button.disabled = summary.is_empty()
+	_apply_safe_area_layout()
+
+func _apply_safe_area_layout() -> void:
+	if root_container == null:
+		return
+	var margins := _safe_area_margins()
+	root_container.offset_left = 54.0 + margins.x
+	root_container.offset_top = 36.0 + margins.y
+	root_container.offset_right = -54.0 - margins.z
+	root_container.offset_bottom = -30.0 - margins.w
+
+func _safe_area_margins() -> Vector4:
+	var viewport_size := get_viewport_rect().size
+	if viewport_size.x <= 0.0 or viewport_size.y <= 0.0:
+		return Vector4.ZERO
+	var safe_rect := DisplayServer.get_display_safe_area()
+	if safe_rect.size.x <= 0 or safe_rect.size.y <= 0:
+		return Vector4.ZERO
+	var safe_pos := Vector2(float(safe_rect.position.x), float(safe_rect.position.y))
+	var safe_size := Vector2(float(safe_rect.size.x), float(safe_rect.size.y))
+	if safe_size.x >= viewport_size.x and safe_size.y >= viewport_size.y and safe_pos == Vector2.ZERO:
+		return Vector4.ZERO
+	return Vector4(
+		clampf(safe_pos.x, 0.0, viewport_size.x * 0.18),
+		clampf(safe_pos.y, 0.0, viewport_size.y * 0.18),
+		clampf(viewport_size.x - safe_pos.x - safe_size.x, 0.0, viewport_size.x * 0.18),
+		clampf(viewport_size.y - safe_pos.y - safe_size.y, 0.0, viewport_size.y * 0.18)
+	)
 
 func _draw_backdrop(node: Control) -> void:
 	var view_size := node.size

@@ -71,6 +71,7 @@ var night_preview_label: Label
 var end_day_button: Button
 var quick_bar: HBoxContainer
 var modal_overlay: Control
+var root_container: VBoxContainer
 var ambient_time := 0.0
 
 func _ready() -> void:
@@ -92,6 +93,10 @@ func _process(delta: float) -> void:
 	var map := estate_board.get_child(0) as Control
 	if map != null:
 		map.queue_redraw()
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_RESIZED:
+		_apply_safe_area_layout()
 
 func _build_theme() -> void:
 	var ui_theme := Theme.new()
@@ -126,11 +131,8 @@ func _build_layout() -> void:
 	add_child(bg)
 
 	var root := VBoxContainer.new()
+	root_container = root
 	root.set_anchors_preset(Control.PRESET_FULL_RECT)
-	root.offset_left = 6
-	root.offset_top = 5
-	root.offset_right = -6
-	root.offset_bottom = -72
 	root.add_theme_constant_override("separation", 4)
 	add_child(root)
 
@@ -138,6 +140,7 @@ func _build_layout() -> void:
 	_build_middle(root)
 	_build_command_bar(root)
 	_build_quick_bar()
+	_apply_safe_area_layout()
 
 func _build_top_bar(root: VBoxContainer) -> void:
 	var top := HBoxContainer.new()
@@ -309,6 +312,40 @@ func _build_quick_bar() -> void:
 	menu.custom_minimum_size = Vector2(86, 42)
 	menu.pressed.connect(_show_game_menu)
 	quick_bar.add_child(menu)
+
+func _apply_safe_area_layout() -> void:
+	if root_container == null:
+		return
+	var margins := _safe_area_margins()
+	root_container.offset_left = 6.0 + margins.x
+	root_container.offset_top = 5.0 + margins.y
+	root_container.offset_right = -6.0 - margins.z
+	root_container.offset_bottom = -8.0 - margins.w
+	if quick_bar != null:
+		quick_bar.offset_left = -96.0 - margins.z
+		quick_bar.offset_top = 66.0 + margins.y
+		quick_bar.offset_right = -10.0 - margins.z
+		quick_bar.offset_bottom = 108.0 + margins.y
+	if modal_overlay != null and is_instance_valid(modal_overlay):
+		modal_overlay.queue_redraw()
+
+func _safe_area_margins() -> Vector4:
+	var viewport_size := get_viewport_rect().size
+	if viewport_size.x <= 0.0 or viewport_size.y <= 0.0:
+		return Vector4.ZERO
+	var safe_rect := DisplayServer.get_display_safe_area()
+	if safe_rect.size.x <= 0 or safe_rect.size.y <= 0:
+		return Vector4.ZERO
+	var safe_pos := Vector2(float(safe_rect.position.x), float(safe_rect.position.y))
+	var safe_size := Vector2(float(safe_rect.size.x), float(safe_rect.size.y))
+	if safe_size.x >= viewport_size.x and safe_size.y >= viewport_size.y and safe_pos == Vector2.ZERO:
+		return Vector4.ZERO
+	return Vector4(
+		clampf(safe_pos.x, 0.0, viewport_size.x * 0.18),
+		clampf(safe_pos.y, 0.0, viewport_size.y * 0.18),
+		clampf(viewport_size.x - safe_pos.x - safe_size.x, 0.0, viewport_size.x * 0.18),
+		clampf(viewport_size.y - safe_pos.y - safe_size.y, 0.0, viewport_size.y * 0.18)
+	)
 
 func _estate_board() -> PanelContainer:
 	var panel := PanelContainer.new()

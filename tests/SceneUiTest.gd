@@ -31,6 +31,11 @@ func _run() -> void:
 	var menu := menu_scene.instantiate()
 	root.add_child(menu)
 	await process_frame
+	_assert_true(menu.has_method("_safe_area_margins"), "Main menu exposes safe-area layout helper")
+	menu.call("_show_message", "Test message")
+	await process_frame
+	_assert_true(_largest_panel(menu) != null, "Main menu modal opens inside the scene")
+	menu.call("_dismiss_modal")
 	menu.call("_new_game")
 	await process_frame
 	await process_frame
@@ -40,6 +45,18 @@ func _run() -> void:
 		_assert_true(String(current.scene_file_path) == "res://scenes/Game.tscn", "New Game changes to Game scene")
 		_assert_true(current.get_child_count() >= 3, "New Game target scene builds visible UI children")
 		_assert_true(_has_button_text(current, "MENU"), "New Game target scene contains menu button")
+
+	var settings_scene := load("res://scenes/screens/SettingsScreen.tscn") as PackedScene
+	_assert_true(settings_scene != null, "Settings scene loads")
+	var settings := settings_scene.instantiate()
+	root.add_child(settings)
+	await process_frame
+	_assert_true(settings.has_method("_safe_area_margins"), "Settings screen exposes safe-area layout helper")
+	_assert_true(_has_button_text(settings, "BACK"), "Settings screen contains back button")
+	settings.call("_message", "Test settings modal")
+	await process_frame
+	_assert_true(_largest_panel(settings) != null, "Settings modal opens inside the scene")
+	settings.queue_free()
 
 	if failures.is_empty():
 		print("Dead Shift scene UI test passed.")

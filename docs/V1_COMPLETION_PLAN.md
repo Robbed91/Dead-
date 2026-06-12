@@ -27,13 +27,14 @@ This is the practical definition of a complete testable V1, separate from a comm
 - Crafting uses facility-gated recipes for ammo, medicine, water, fuel, tools, and upgrades; radio, assignment, and building-management controls are disabled or hidden when unavailable.
 - First-run tutorial overlay explains the core loop and can be reopened from the in-game menu.
 - Settings/reset/credits and game prompts use in-game modals instead of native popups.
+- Main menu, settings, and game dashboard apply safe-area margins so Android cutouts/navigation areas have less chance of covering controls.
 - Scavenge cards, survivor portraits, building markers, role marks, resource chips, horde tokens, and location icons use a consistent procedural art style.
 - Save/load and APK export pass automated local checks.
 
 ## Still Requires Physical QA
 
 - Install and play the APK on the Samsung S24 Ultra.
-- Confirm no Android system navigation or camera cutout hides bottom controls.
+- Confirm no Android system navigation or camera cutout hides bottom controls on the Samsung S24 Ultra.
 - Confirm long sessions feel balanced from Day 1 to Day 30.
 - Confirm generated background art looks acceptable on the phone screen.
 - Confirm audio behavior once sound effects/music are added.
