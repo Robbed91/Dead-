@@ -1032,10 +1032,11 @@ func _build_survivor_commands() -> void:
 func _build_scavenge_commands() -> void:
 	var selector := OptionButton.new()
 	selector.custom_minimum_size = Vector2(150, 54)
-	var crew_survivors := SurvivorManager.get_crew_survivors()
+	var crew_survivors: Array = SurvivorManager.get_crew_survivors()
 	if not crew_survivors.is_empty() and not _is_selected_scavenger_crew():
 		selected_scavenger_id = int(crew_survivors[0]["id"])
-	selected_scavenge_party_size = clampi(selected_scavenge_party_size, 1, max(1, min(GameManager.get_scavenge_party_limit(), crew_survivors.size())))
+	var scavenge_limit: int = GameManager.get_scavenge_party_limit()
+	selected_scavenge_party_size = clampi(selected_scavenge_party_size, 1, maxi(1, mini(scavenge_limit, crew_survivors.size())))
 	for survivor in crew_survivors:
 		selector.add_item(String(survivor["name"]), int(survivor["id"]))
 		if int(survivor["id"]) == selected_scavenger_id:
@@ -1044,7 +1045,7 @@ func _build_scavenge_commands() -> void:
 	command_body.add_child(selector)
 	var party_selector := OptionButton.new()
 	party_selector.custom_minimum_size = Vector2(120, 54)
-	var max_party := max(1, min(GameManager.get_scavenge_party_limit(), crew_survivors.size()))
+	var max_party: int = maxi(1, mini(scavenge_limit, crew_survivors.size()))
 	for party_size in range(1, max_party + 1):
 		party_selector.add_item("Party %d" % party_size, party_size)
 		if party_size == selected_scavenge_party_size:
@@ -1052,8 +1053,8 @@ func _build_scavenge_commands() -> void:
 	party_selector.item_selected.connect(_on_scavenge_party_size_selected.bind(party_selector))
 	command_body.add_child(party_selector)
 	for location in ScavengeManager.locations:
-		var loot_text := ", ".join(Array(location.get("loot", [])))
-		var state := _location_state_text(location)
+		var loot_text: String = ", ".join(Array(location.get("loot", [])))
+		var state: String = _location_state_text(location)
 		var button := _location_button(location, "%s\n%s | %s | %s" % [location["name"], String(location["danger"]).to_upper(), state, loot_text])
 		button.custom_minimum_size = Vector2(162, 54)
 		button.disabled = not bool(ScavengeManager.can_scavenge(String(location["name"])).get("ok", false))
@@ -1064,7 +1065,7 @@ func _build_crafting_commands() -> void:
 	for recipe_id in GameManager.CRAFT_RECIPES.keys():
 		var recipe_key := String(recipe_id)
 		var recipe: Dictionary = GameManager.CRAFT_RECIPES[recipe_key]
-		var availability := GameManager.can_craft(recipe_key)
+		var availability: Dictionary = GameManager.can_craft(recipe_key)
 		var button := _small_button("%s\n-%s  +%s" % [recipe["name"], GameManager.recipe_cost_text(recipe_key), GameManager.recipe_gain_text(recipe_key)])
 		button.custom_minimum_size = Vector2(170, 54)
 		button.disabled = not bool(availability.get("ok", false))
@@ -1485,8 +1486,8 @@ func _selected_scavenge_party_ids() -> Array:
 	var ids: Array = []
 	if selected_scavenger_id > 0:
 		ids.append(selected_scavenger_id)
-	var crew := SurvivorManager.get_crew_survivors()
-	var max_party := max(1, min(selected_scavenge_party_size, min(GameManager.get_scavenge_party_limit(), crew.size())))
+	var crew: Array = SurvivorManager.get_crew_survivors()
+	var max_party: int = maxi(1, mini(selected_scavenge_party_size, mini(GameManager.get_scavenge_party_limit(), crew.size())))
 	for survivor in crew:
 		var id := int(survivor["id"])
 		if ids.has(id):
