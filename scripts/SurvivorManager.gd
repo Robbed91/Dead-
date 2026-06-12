@@ -57,6 +57,10 @@ func is_crew(id: int) -> bool:
 	var survivor := _find_survivor(id)
 	return not survivor.is_empty() and String(survivor.get("control_mode", "NPC")) == "Crew"
 
+func is_alive(id: int) -> bool:
+	var survivor := _find_survivor(id)
+	return not survivor.is_empty() and String(survivor.get("status", "Healthy")) != "Dead"
+
 func get_crew_count() -> int:
 	var total := 0
 	for survivor in get_available_scavengers():

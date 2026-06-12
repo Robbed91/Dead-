@@ -145,9 +145,14 @@ func assign_survivor(id: int, survivor_id: int) -> Dictionary:
 		return {"ok": false, "message": "Building not found."}
 	if not is_controlled(building):
 		return {"ok": false, "message": "%s must be claimed before assigning survivors." % building["name"]}
+	if not SurvivorManager.is_alive(survivor_id):
+		return {"ok": false, "message": "Survivor not available."}
+	if not SurvivorManager.is_crew(survivor_id):
+		return {"ok": false, "message": "%s is an NPC resident. Add them to Crew before manual building assignment." % SurvivorManager.get_survivor_name(survivor_id)}
 	var assigned := Array(building.get("assigned_survivors", []))
-	if assigned.size() >= int(building.get("capacity", 0)):
+	if not assigned.has(survivor_id) and assigned.size() >= int(building.get("capacity", 0)):
 		return {"ok": false, "message": "%s is at capacity." % building["name"]}
+	_remove_survivor_from_buildings(survivor_id, id)
 	if not assigned.has(survivor_id):
 		assigned.append(survivor_id)
 	building["assigned_survivors"] = assigned
@@ -326,3 +331,12 @@ func to_dict() -> Dictionary:
 func from_dict(data: Dictionary) -> void:
 	buildings = Array(data.get("buildings", [])).duplicate(true)
 	buildings_changed.emit()
+
+func _remove_survivor_from_buildings(survivor_id: int, except_building_id: int = -1) -> void:
+	for building in buildings:
+		if int(building.get("id", -1)) == except_building_id:
+			continue
+		var assigned := Array(building.get("assigned_survivors", []))
+		if assigned.has(survivor_id):
+			assigned.erase(survivor_id)
+			building["assigned_survivors"] = assigned
