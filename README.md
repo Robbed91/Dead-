@@ -93,6 +93,14 @@ Godot_v4.6.3-stable_win64.exe --headless --path . -s tests/SmokeTest.gd
 
 It starts a new game, claims a building, installs an upgrade, starts and completes solo and party scavenge jobs, checks active expedition save/load, checks location depletion/recovery, checks survivor condition progression, prepares a named defence tactic, previews night defence, saves, checks save summaries/settings persistence, reloads, and ends the day. The test backs up and restores any existing `user://dead_shift_save.json` and `user://dead_shift_settings.json`.
 
+To run the full local readiness check before installing on Android:
+
+```powershell
+.\tools\verify_local.ps1
+```
+
+That script loads the project headlessly, runs the gameplay smoke test, phone viewport UI test, Android config test, exports the debug APK, and prints the APK path.
+
 ## Android Landscape Orientation
 
 Landscape is already set in `project.godot`:
