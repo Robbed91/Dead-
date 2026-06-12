@@ -375,9 +375,10 @@ func _estate_board() -> PanelContainer:
 		button.clip_text = true
 		button.alignment = HORIZONTAL_ALIGNMENT_CENTER
 		button.add_theme_font_size_override("font_size", 12)
-		button.add_theme_stylebox_override("normal", _map_button_style(Color(0.04, 0.05, 0.06, 0.34), Color(0.85, 0.9, 0.92, 0.65)))
-		button.add_theme_stylebox_override("hover", _map_button_style(Color(0.14, 0.09, 0.04, 0.48), ORANGE))
-		button.add_theme_stylebox_override("pressed", _map_button_style(Color(0.2, 0.11, 0.03, 0.56), ORANGE))
+		button.add_theme_color_override("font_color", Color(1, 1, 1, 0))
+		button.add_theme_stylebox_override("normal", _map_hit_style(false))
+		button.add_theme_stylebox_override("hover", _map_hit_style(true))
+		button.add_theme_stylebox_override("pressed", _map_button_style(Color(0.2, 0.11, 0.03, 0.18), ORANGE))
 		button.pressed.connect(_select_building.bind(int(building["id"])))
 		map.add_child(button)
 		building_buttons[int(building["id"])] = button
@@ -418,11 +419,14 @@ func _draw_estate_map(map: Control) -> void:
 		var color := _building_color(building).darkened(0.15)
 		map.draw_rect(rect.grow(3), Color(0.02, 0.024, 0.027, 0.32), true)
 		map.draw_rect(rect, Color(color.r, color.g, color.b, 0.28), true)
-		map.draw_rect(rect, Color(0.82, 0.88, 0.91, 0.78), false, 2)
+		var border_color := ORANGE if int(building.get("id", 0)) == selected_building_id else Color(0.82, 0.88, 0.91, 0.50)
+		map.draw_rect(rect, border_color, false, 2)
 		_draw_building_detail(map, building, rect)
+		_draw_building_map_label(map, building, rect)
 
 func _draw_building_detail(map: Control, building: Dictionary, rect: Rect2) -> void:
 	var type_color := _building_type_color(String(building.get("type", "")))
+	var status := String(building.get("status", "Unknown"))
 	var roof := Rect2(rect.position + Vector2(0, 3), Vector2(rect.size.x, maxf(6.0, rect.size.y * 0.16)))
 	var floor_rect := Rect2(rect.position + Vector2(5, rect.size.y * 0.22), Vector2(rect.size.x - 10.0, rect.size.y * 0.52))
 	map.draw_rect(rect.grow(8), Color(0.0, 0.0, 0.0, 0.22), true)
@@ -432,6 +436,9 @@ func _draw_building_detail(map: Control, building: Dictionary, rect: Rect2) -> v
 		map.draw_line(Vector2(strip_x, roof.position.y + 1.0), Vector2(strip_x + 10.0, roof.position.y + roof.size.y - 1.0), Color(1, 1, 1, 0.08), 1)
 	map.draw_rect(floor_rect, Color(type_color.r, type_color.g, type_color.b, 0.10), true)
 	_draw_work_yard_clutter(map, building, rect, type_color)
+	if status == "Unknown":
+		_draw_scoutable_facade(map, building, rect, type_color)
+		return
 	_draw_facade_lines(map, building, rect, type_color)
 	var use_icon_pos := rect.position + rect.size * Vector2(0.16, 0.31)
 	_draw_building_use_icon(map, String(building.get("current_use", "")), use_icon_pos, minf(rect.size.x, rect.size.y) * 0.12)
@@ -450,6 +457,63 @@ func _draw_building_detail(map: Control, building: Dictionary, rect: Rect2) -> v
 		_draw_map_light(map, lamp, 5.0 + pulse * 3.0, ORANGE)
 	if String(building.get("status", "")) == "Infested":
 		_draw_zombie_silhouette(map, rect.position + rect.size * Vector2(0.78, 0.68), 0.75, RED)
+
+func _draw_scoutable_facade(map: Control, building: Dictionary, rect: Rect2, type_color: Color) -> void:
+	var unlocked: bool = BuildingManager.is_building_unlocked(building)
+	var shade := Color(type_color.r, type_color.g, type_color.b, 0.18 if unlocked else 0.08)
+	var shutter := Rect2(rect.position + rect.size * Vector2(0.16, 0.36), rect.size * Vector2(0.48, 0.26))
+	map.draw_rect(shutter, Color(0.0, 0.0, 0.0, 0.30), true)
+	for slat in range(4):
+		var y: float = shutter.position.y + float(slat + 1) * shutter.size.y / 5.0
+		map.draw_line(Vector2(shutter.position.x + 3.0, y), Vector2(shutter.position.x + shutter.size.x - 3.0, y), shade.lightened(0.28), 1)
+	match String(building.get("type", "")):
+		"Medical":
+			var c := rect.position + rect.size * Vector2(0.74, 0.43)
+			map.draw_line(c + Vector2(-8, 0), c + Vector2(8, 0), GREEN.darkened(0.1), 3)
+			map.draw_line(c + Vector2(0, -8), c + Vector2(0, 8), GREEN.darkened(0.1), 3)
+		"Vehicle":
+			var van := Rect2(rect.position + rect.size * Vector2(0.55, 0.50), rect.size * Vector2(0.28, 0.14))
+			map.draw_rect(van, BLUE.darkened(0.45), true)
+			map.draw_circle(van.position + Vector2(4, van.size.y + 1), 2.8, Color("#050607"))
+			map.draw_circle(van.position + Vector2(van.size.x - 4, van.size.y + 1), 2.8, Color("#050607"))
+		"Defence":
+			var mast := rect.position + rect.size * Vector2(0.73, 0.66)
+			map.draw_line(mast, mast + Vector2(-10, -26), RED.darkened(0.08), 2)
+			map.draw_line(mast, mast + Vector2(10, -26), RED.darkened(0.08), 2)
+			map.draw_line(mast + Vector2(-13, -26), mast + Vector2(13, -26), RED.darkened(0.08), 2)
+		"Food":
+			for crate in range(3):
+				var pos := rect.position + rect.size * Vector2(0.55 + float(crate) * 0.08, 0.55)
+				map.draw_rect(Rect2(pos, Vector2(9, 8)), YELLOW.darkened(0.35), true)
+		"Living":
+			for window in range(3):
+				var pos := rect.position + rect.size * Vector2(0.52 + float(window) * 0.1, 0.39)
+				map.draw_rect(Rect2(pos, Vector2(7, 10)), BLUE.darkened(0.42), true)
+	if unlocked:
+		var ping := rect.position + rect.size * Vector2(0.84, 0.25)
+		var pulse: float = 0.5 + (sin(ambient_time * 3.6 + float(building.get("id", 0))) + 1.0) * 0.18
+		_draw_map_light(map, ping, 4.0 + pulse * 2.0, BLUE)
+		map.draw_arc(ping, 9.0 + pulse * 4.0, 0.0, TAU, 20, Color(BLUE.r, BLUE.g, BLUE.b, 0.35), 1.4)
+	else:
+		var lock_center := rect.position + rect.size * Vector2(0.84, 0.25)
+		map.draw_arc(lock_center + Vector2(0, -2), 4.5, PI, TAU, 8, MUTED.darkened(0.15), 1.3)
+		map.draw_rect(Rect2(lock_center + Vector2(-4, -1), Vector2(8, 7)), MUTED.darkened(0.3), true)
+
+func _draw_building_map_label(map: Control, building: Dictionary, rect: Rect2) -> void:
+	var building_id := int(building.get("id", 0))
+	var status := String(building.get("status", "Unknown"))
+	var unlocked: bool = BuildingManager.is_building_unlocked(building)
+	var type_color := _building_type_color(String(building.get("type", "")))
+	var label := _building_display_name(building)
+	var sublabel := "%s  %d/%d" % [status, Array(building.get("assigned_survivors", [])).size(), int(building.get("capacity", 0))]
+	if status == "Unknown":
+		label = "SCOUT SITE" if unlocked else "LOCKED SITE"
+		sublabel = String(building.get("type", "")).to_upper()
+	var label_rect := Rect2(rect.position + Vector2(6.0, rect.size.y * 0.18), Vector2(rect.size.x - 12.0, maxf(28.0, rect.size.y * 0.28)))
+	map.draw_rect(label_rect, Color(0.0, 0.0, 0.0, 0.54), true)
+	map.draw_rect(label_rect, ORANGE if building_id == selected_building_id else Color(type_color.r, type_color.g, type_color.b, 0.75), false, 1)
+	map.draw_string(ThemeDB.fallback_font, label_rect.position + Vector2(5.0, 13.0), label, HORIZONTAL_ALIGNMENT_LEFT, label_rect.size.x - 10.0, 11, TEXT if unlocked or status != "Unknown" else MUTED)
+	map.draw_string(ThemeDB.fallback_font, label_rect.position + Vector2(5.0, 26.0), sublabel, HORIZONTAL_ALIGNMENT_LEFT, label_rect.size.x - 10.0, 9, type_color if unlocked or status != "Unknown" else MUTED.darkened(0.1))
 
 func _draw_work_yard_clutter(map: Control, building: Dictionary, rect: Rect2, type_color: Color) -> void:
 	var building_type := String(building.get("type", ""))
@@ -700,6 +764,7 @@ func _position_building_buttons(map: Control) -> void:
 		var button: Button = building_buttons[id]
 		button.text = _building_button_text(building)
 		button.add_theme_font_size_override("font_size", 12 if not _is_expansion_marker(building) else 8)
+		button.tooltip_text = _building_hover_text(building)
 		var rect := _building_rect(map, building).grow(-4)
 		button.position = rect.position
 		button.size = rect.size
@@ -1709,10 +1774,13 @@ func _selected_building() -> Dictionary:
 	return {}
 
 func _building_button_text(building: Dictionary) -> String:
+	return ""
+
+func _building_hover_text(building: Dictionary) -> String:
 	if _is_expansion_marker(building):
-		return "LOCKED\n%s" % String(building.get("type", "")).to_upper()
+		return "Locked: %s" % BuildingManager.get_unlock_hint(building)
 	var assigned := Array(building.get("assigned_survivors", []))
-	return "%s\n%s  %d/%d" % [_building_display_name(building), building["status"], assigned.size(), int(building.get("capacity", 0))]
+	return "%s | %s | %d/%d" % [_building_display_name(building), building["status"], assigned.size(), int(building.get("capacity", 0))]
 
 func _building_display_name(building: Dictionary) -> String:
 	if GameManager.colony_tier_index == 0 and String(building.get("name", "")) == "Main Warehouse":
@@ -1967,6 +2035,20 @@ func _map_button_style(fill: Color, border: Color) -> StyleBoxFlat:
 	style.border_width_top = 1
 	style.border_width_right = 1
 	style.border_width_bottom = 1
+	style.corner_radius_top_left = 3
+	style.corner_radius_top_right = 3
+	style.corner_radius_bottom_left = 3
+	style.corner_radius_bottom_right = 3
+	return style
+
+func _map_hit_style(show_border: bool) -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(0, 0, 0, 0)
+	style.border_color = Color(ORANGE.r, ORANGE.g, ORANGE.b, 0.34 if show_border else 0.0)
+	style.border_width_left = 1 if show_border else 0
+	style.border_width_top = 1 if show_border else 0
+	style.border_width_right = 1 if show_border else 0
+	style.border_width_bottom = 1 if show_border else 0
 	style.corner_radius_top_left = 3
 	style.corner_radius_top_right = 3
 	style.corner_radius_bottom_left = 3
