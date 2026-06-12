@@ -80,6 +80,9 @@ var quick_bar: HBoxContainer
 var modal_overlay: Control
 var root_container: VBoxContainer
 var ambient_time := 0.0
+var layout_margins_locked := false
+var locked_safe_margins := Vector4.ZERO
+var locked_viewport_size := Vector2.ZERO
 
 func _ready() -> void:
 	var fallback := get_node_or_null("FallbackBackground")
@@ -327,7 +330,8 @@ func _build_quick_bar() -> void:
 func _apply_safe_area_layout() -> void:
 	if root_container == null:
 		return
-	var margins := _safe_area_margins()
+	var viewport_size := get_viewport_rect().size
+	var margins := _stable_safe_area_margins(viewport_size)
 	var bottom_gutter: float = maxf(GAMEPLAY_MARGIN_BOTTOM, margins.w + 10.0)
 	var command_top: float = bottom_gutter + COMMAND_BAR_HEIGHT
 	root_container.offset_left = GAMEPLAY_MARGIN_LEFT + margins.x
@@ -346,6 +350,19 @@ func _apply_safe_area_layout() -> void:
 		quick_bar.offset_bottom = 108.0 + margins.y
 	if modal_overlay != null and is_instance_valid(modal_overlay):
 		modal_overlay.queue_redraw()
+
+func _stable_safe_area_margins(viewport_size: Vector2) -> Vector4:
+	if not layout_margins_locked:
+		locked_safe_margins = _safe_area_margins()
+		locked_viewport_size = viewport_size
+		layout_margins_locked = true
+		return locked_safe_margins
+	var width_delta: float = absf(viewport_size.x - locked_viewport_size.x)
+	var height_delta: float = absf(viewport_size.y - locked_viewport_size.y)
+	if width_delta > 96.0 or height_delta > 96.0:
+		locked_safe_margins = _safe_area_margins()
+		locked_viewport_size = viewport_size
+	return locked_safe_margins
 
 func _safe_area_margins() -> Vector4:
 	var viewport_size := get_viewport_rect().size
@@ -1291,7 +1308,9 @@ func _on_building_action(id: int, action: String) -> void:
 	_show_result(GameManager.building_action(id, action)["message"])
 
 func _on_scavenge(location_name: String) -> void:
-	_show_result(GameManager.scavenge_party(location_name, _selected_scavenge_party_ids())["message"])
+	var result: Dictionary = GameManager.scavenge_party(location_name, _selected_scavenge_party_ids())
+	active_tab = "Buildings"
+	_show_result(String(result["message"]))
 
 func _on_scavenger_selected(index: int, selector: OptionButton) -> void:
 	selected_scavenger_id = selector.get_item_id(index)
@@ -1644,6 +1663,7 @@ func _run_defence_from_modal(tactic_id: String) -> void:
 func _run_scavenge_from_modal(location_name: String) -> void:
 	_dismiss_modal()
 	var result: Dictionary = GameManager.scavenge_party(location_name, _selected_scavenge_party_ids())
+	active_tab = "Buildings"
 	_show_result(String(result["message"]))
 
 func _is_selected_scavenger_crew() -> bool:
