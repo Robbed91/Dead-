@@ -717,13 +717,51 @@ func _draw_map_light(map: Control, pos: Vector2, radius: float, color: Color) ->
 	map.draw_circle(pos, radius, Color(color.r, color.g, color.b, 0.72))
 
 func _draw_zombie_silhouette(map: Control, pos: Vector2, draw_scale: float, color: Color) -> void:
-	var sway := sin(ambient_time * 2.2 + pos.x * 0.01) * 2.0
-	map.draw_circle(pos + Vector2(sway, -10) * draw_scale, 4.5 * draw_scale, color)
-	map.draw_line(pos + Vector2(sway, -6) * draw_scale, pos + Vector2(-1, 7) * draw_scale, color, 3.0 * draw_scale)
-	map.draw_line(pos + Vector2(-1, -2) * draw_scale, pos + Vector2(-9, 5) * draw_scale, color, 2.0 * draw_scale)
-	map.draw_line(pos + Vector2(0, -2) * draw_scale, pos + Vector2(8, 4) * draw_scale, color, 2.0 * draw_scale)
-	map.draw_line(pos + Vector2(-1, 7) * draw_scale, pos + Vector2(-6, 15) * draw_scale, color, 2.0 * draw_scale)
-	map.draw_line(pos + Vector2(0, 7) * draw_scale, pos + Vector2(7, 15) * draw_scale, color, 2.0 * draw_scale)
+	_draw_pixel_zombie(map, pos, draw_scale, color)
+
+func _pixel_rect(node: Control, origin: Vector2, x: float, y: float, w: float, h: float, unit: float, color: Color) -> void:
+	node.draw_rect(Rect2(origin + Vector2(x, y) * unit, Vector2(w, h) * unit), color, true)
+
+func _draw_pixel_zombie(node: Control, pos: Vector2, draw_scale: float, accent: Color) -> void:
+	var unit: float = maxf(1.0, 2.2 * draw_scale)
+	var sway: float = roundf(sin(ambient_time * 2.2 + pos.x * 0.01) * unit)
+	var origin := pos + Vector2(-8.0 * unit + sway, -20.0 * unit)
+	var body := Color("#141719").lerp(accent.darkened(0.35), 0.18)
+	var wound := accent.lightened(0.18)
+	var eye := Color("#e8e0d2")
+	var shadow := Color(0.0, 0.0, 0.0, 0.34)
+	_pixel_rect(node, origin, 1, 19, 7, 2, unit, shadow)
+	_pixel_rect(node, origin, 8, 19, 6, 2, unit, shadow)
+	_pixel_rect(node, origin, 5, 0, 7, 1, unit, body)
+	_pixel_rect(node, origin, 3, 1, 10, 2, unit, body)
+	_pixel_rect(node, origin, 2, 3, 12, 4, unit, body)
+	_pixel_rect(node, origin, 3, 7, 9, 2, unit, body)
+	_pixel_rect(node, origin, 0, 3, 2, 1, unit, body)
+	_pixel_rect(node, origin, 0, 5, 2, 1, unit, body)
+	_pixel_rect(node, origin, 6, 4, 2, 2, unit, eye)
+	_pixel_rect(node, origin, 11, 4, 2, 2, unit, eye)
+	_pixel_rect(node, origin, 7, 8, 1, 1, unit, eye)
+	_pixel_rect(node, origin, 10, 8, 1, 1, unit, eye)
+	_pixel_rect(node, origin, 12, 8, 1, 1, unit, eye)
+	_pixel_rect(node, origin, 5, 9, 5, 1, unit, body)
+	_pixel_rect(node, origin, 4, 10, 7, 7, unit, body)
+	_pixel_rect(node, origin, 3, 11, 2, 6, unit, body)
+	_pixel_rect(node, origin, 10, 11, 2, 7, unit, body)
+	_pixel_rect(node, origin, 0, 11, 3, 2, unit, body)
+	_pixel_rect(node, origin, -1, 13, 2, 4, unit, body)
+	_pixel_rect(node, origin, 12, 11, 5, 2, unit, body)
+	_pixel_rect(node, origin, 16, 13, 2, 2, unit, body)
+	_pixel_rect(node, origin, 17, 15, 1, 2, unit, body)
+	_pixel_rect(node, origin, 7, 11, 1, 1, unit, wound)
+	_pixel_rect(node, origin, 9, 12, 1, 1, unit, wound)
+	_pixel_rect(node, origin, 11, 14, 1, 1, unit, wound)
+	_pixel_rect(node, origin, 13, 15, 1, 1, unit, wound)
+	_pixel_rect(node, origin, 5, 17, 3, 6, unit, body)
+	_pixel_rect(node, origin, 10, 17, 3, 6, unit, body)
+	_pixel_rect(node, origin, 4, 22, 5, 2, unit, body)
+	_pixel_rect(node, origin, 10, 22, 5, 2, unit, body)
+	_pixel_rect(node, origin, 6, 18, 1, 1, unit, wound)
+	_pixel_rect(node, origin, 7, 20, 1, 1, unit, wound)
 
 func _draw_building_use_icon(map: Control, use_name: String, pos: Vector2, icon_scale: float) -> void:
 	var icon_color := _use_icon_color(use_name)
@@ -1938,39 +1976,84 @@ func _draw_survivor_icon(node: Control, survivor: Dictionary, compact: bool) -> 
 	var accent := _status_color(survivor)
 	var role_color := _role_color(String(survivor.get("role", "")))
 	var skin := _skin_color(int(survivor.get("id", 1)))
-	var coat := accent.darkened(0.25)
 	var outline := Color("#050607")
 	var mode := String(survivor.get("control_mode", "NPC"))
 	var task := String(survivor.get("assigned_task", "Rest"))
-	var step := sin(ambient_time * (5.0 if task in ["Scavenge", "Scout"] else 2.8) + float(survivor.get("id", 1)))
 	node.draw_rect(Rect2(Vector2.ZERO, icon_size), Color(0.02, 0.024, 0.027, 0.66), true)
 	node.draw_rect(Rect2(Vector2.ZERO, icon_size), (BLUE if mode == "Crew" else MUTED).darkened(0.2), false, 2 if mode == "Crew" else 1)
-	var center := icon_size * Vector2(0.5, 0.4 if compact else 0.34) + Vector2(0, step * (1.0 if compact else 1.5))
-	var head_radius := minf(icon_size.x, icon_size.y) * (0.18 if compact else 0.2)
-	var torso_start := center + Vector2(0, head_radius * 1.1)
-	var leg_base := torso_start + Vector2(0, icon_size.y * (0.24 if compact else 0.3))
-	var limb_width := maxf(1.2, head_radius * 0.35)
-	node.draw_line(torso_start + Vector2(-head_radius * 0.7, head_radius), leg_base + Vector2(-head_radius * 0.9, head_radius * (1.7 + step * 0.3)), coat, limb_width)
-	node.draw_line(torso_start + Vector2(head_radius * 0.7, head_radius), leg_base + Vector2(head_radius * 0.9, head_radius * (1.7 - step * 0.3)), coat, limb_width)
-	var arm_swing := Vector2(step * head_radius * 0.6, head_radius * 1.0)
-	node.draw_line(torso_start + Vector2(-head_radius * 0.9, 0), torso_start + Vector2(-head_radius * 1.7, head_radius) - arm_swing, role_color, limb_width)
-	node.draw_line(torso_start + Vector2(head_radius * 0.9, 0), torso_start + Vector2(head_radius * 1.7, head_radius) + arm_swing, role_color, limb_width)
-	node.draw_circle(center, head_radius + 1.0, outline)
-	node.draw_circle(center, head_radius, skin)
-	if task == "Guard":
-		node.draw_rect(Rect2(center + Vector2(head_radius * 0.45, -head_radius * 0.2), Vector2(head_radius * 0.85, head_radius * 0.24)), RED, true)
-	var body_top := center + Vector2(-head_radius * 1.2, head_radius * 0.95)
-	var body_size := Vector2(head_radius * 2.4, icon_size.y * (0.34 if compact else 0.42))
-	node.draw_rect(Rect2(body_top, body_size), coat, true)
-	node.draw_rect(Rect2(body_top, body_size), outline, false, 1)
-	_draw_task_tool(node, task, center + Vector2(head_radius * 1.7, body_size.y * 0.55), role_color, compact)
-	_draw_role_mark(node, survivor, center + Vector2(0, body_size.y * 0.95), accent, compact)
+	_draw_pixel_survivor(node, survivor, icon_size, skin, role_color, accent, compact)
 	if compact:
 		var survivor_id := int(survivor.get("id", 0))
 		var progress := clampf(ActivityManager.get_progress(survivor_id), 0.0, 1.0)
 		var bar_rect := Rect2(Vector2(4.0, icon_size.y - 5.0), Vector2(maxf(1.0, icon_size.x - 8.0), 3.0))
 		node.draw_rect(bar_rect, Color(0.0, 0.0, 0.0, 0.82), true)
 		node.draw_rect(Rect2(bar_rect.position, Vector2(bar_rect.size.x * progress, bar_rect.size.y)), BLUE if progress > 0.0 else MUTED.darkened(0.25), true)
+
+func _draw_pixel_survivor(node: Control, survivor: Dictionary, icon_size: Vector2, skin: Color, role_color: Color, accent: Color, compact: bool) -> void:
+	var task := String(survivor.get("assigned_task", "Rest"))
+	var role := String(survivor.get("role", ""))
+	var unit: float = floorf(minf(icon_size.x / 15.0, icon_size.y / 21.0))
+	unit = maxf(1.0, unit)
+	var bob: float = roundf(sin(ambient_time * (5.0 if task in ["Scavenge", "Scout"] else 2.6) + float(survivor.get("id", 1))) * (1.0 if compact else 1.5))
+	var sprite_size := Vector2(15.0, 21.0) * unit
+	var origin := Vector2((icon_size.x - sprite_size.x) * 0.5, 2.0 + bob)
+	var hair := _hair_color(int(survivor.get("id", 1)))
+	var trouser := Color("#1b2529")
+	var boot := Color("#050607")
+	var shirt := Color("#d8c5a3") if role in ["Medic", "Teacher", "Negotiator"] else Color("#5c4a35")
+	var jacket := role_color.darkened(0.34)
+	_pixel_rect(node, origin, 3, 19, 5, 2, unit, Color(0, 0, 0, 0.34))
+	_pixel_rect(node, origin, 8, 19, 5, 2, unit, Color(0, 0, 0, 0.34))
+	_pixel_rect(node, origin, 4, 0, 7, 1, unit, hair.darkened(0.1))
+	_pixel_rect(node, origin, 3, 1, 9, 2, unit, hair)
+	_pixel_rect(node, origin, 3, 3, 2, 3, unit, hair)
+	_pixel_rect(node, origin, 5, 3, 6, 4, unit, skin)
+	_pixel_rect(node, origin, 11, 3, 1, 3, unit, skin.darkened(0.05))
+	_pixel_rect(node, origin, 5, 5, 1, 1, unit, RED.lightened(0.15))
+	_pixel_rect(node, origin, 10, 5, 1, 1, unit, RED.lightened(0.15))
+	_pixel_rect(node, origin, 7, 7, 3, 1, unit, skin.darkened(0.25))
+	_pixel_rect(node, origin, 4, 8, 7, 2, unit, shirt)
+	_pixel_rect(node, origin, 3, 10, 9, 5, unit, jacket)
+	_pixel_rect(node, origin, 5, 10, 5, 5, unit, shirt.darkened(0.05))
+	_pixel_rect(node, origin, 2, 10, 2, 5, unit, skin.darkened(0.05))
+	_pixel_rect(node, origin, 12, 10, 2, 5, unit, skin.darkened(0.05))
+	_pixel_rect(node, origin, 4, 15, 4, 5, unit, trouser)
+	_pixel_rect(node, origin, 9, 15, 4, 5, unit, trouser)
+	_pixel_rect(node, origin, 3, 19, 5, 2, unit, boot)
+	_pixel_rect(node, origin, 9, 19, 5, 2, unit, boot)
+	_draw_pixel_role_gear(node, origin, unit, role, task, accent, role_color)
+
+func _hair_color(id: int) -> Color:
+	var tones := [Color("#2b211a"), Color("#141111"), Color("#7f2d1f"), Color("#d8d0bc"), Color("#4b3523")]
+	return tones[id % tones.size()]
+
+func _draw_pixel_role_gear(node: Control, origin: Vector2, unit: float, role: String, task: String, accent: Color, role_color: Color) -> void:
+	match role:
+		"Medic":
+			_pixel_rect(node, origin, 11, 9, 3, 3, unit, GREEN.darkened(0.05))
+			_pixel_rect(node, origin, 12, 9, 1, 3, unit, Color("#f5f1df"))
+			_pixel_rect(node, origin, 11, 10, 3, 1, unit, Color("#f5f1df"))
+		"Guard":
+			_pixel_rect(node, origin, 12, 8, 1, 8, unit, RED.darkened(0.25))
+			_pixel_rect(node, origin, 13, 7, 1, 2, unit, RED)
+		"Cook":
+			_pixel_rect(node, origin, 5, -1, 5, 1, unit, Color("#d8d0bc"))
+			_pixel_rect(node, origin, 10, 11, 2, 2, unit, YELLOW.darkened(0.1))
+		"Builder", "Sign Fitter":
+			_pixel_rect(node, origin, 2, 8, 11, 1, unit, ORANGE.darkened(0.1))
+			_pixel_rect(node, origin, 12, 14, 3, 1, unit, ORANGE)
+		_:
+			_pixel_rect(node, origin, 2, 10, 1, 5, unit, role_color.darkened(0.25))
+	if task in ["Scavenge", "Scout"]:
+		_pixel_rect(node, origin, 1, 9, 2, 5, unit, BLUE.darkened(0.25))
+		_pixel_rect(node, origin, 0, 10, 1, 3, unit, BLUE.darkened(0.05))
+	elif task in ["Build", "Repair"]:
+		_pixel_rect(node, origin, 12, 13, 3, 1, unit, ORANGE.lightened(0.08))
+	elif task == "Medical":
+		_pixel_rect(node, origin, 13, 11, 1, 4, unit, GREEN)
+		_pixel_rect(node, origin, 12, 12, 3, 1, unit, GREEN)
+	elif task == "Guard":
+		_pixel_rect(node, origin, 13, 9, 1, 7, unit, RED.darkened(0.2))
 
 func _draw_task_tool(node: Control, task: String, pos: Vector2, color: Color, compact: bool) -> void:
 	var tool_scale := 0.65 if compact else 0.95

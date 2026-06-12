@@ -178,55 +178,70 @@ func _draw_backdrop(node: Control) -> void:
 	node.draw_circle(view_size * Vector2(0.74, 0.31), 38, Color(RED.r, RED.g, RED.b, glow))
 
 func _draw_menu_zombie(node: Control, pos: Vector2, draw_scale: float, seed: float) -> void:
-	var sway: float = sin(menu_time * 2.1 + seed) * 3.0
-	var body := Color("#0b1013")
-	var edge := Color(0.72, 0.13, 0.1, 0.16)
-	var head := pos + Vector2(sway - 3.0, -30.0) * draw_scale
-	var shoulder := pos + Vector2(sway, -18.0) * draw_scale
-	var hip := pos + Vector2(sway - 4.0, 10.0) * draw_scale
-	var coat_poly: PackedVector2Array = PackedVector2Array([
-		shoulder + Vector2(-12, 0) * draw_scale,
-		shoulder + Vector2(8, -2) * draw_scale,
-		hip + Vector2(15, 18) * draw_scale,
-		hip + Vector2(0, 29) * draw_scale,
-		hip + Vector2(-17, 17) * draw_scale
-	])
-	node.draw_colored_polygon(coat_poly, body)
-	node.draw_polyline(coat_poly, edge, 1.2 * draw_scale, true)
-	node.draw_circle(head + Vector2(1, 1) * draw_scale, 7.5 * draw_scale, Color(0, 0, 0, 0.45))
-	node.draw_circle(head, 7.0 * draw_scale, body.lightened(0.05))
-	node.draw_rect(Rect2(head + Vector2(2, -1) * draw_scale, Vector2(3, 2) * draw_scale), RED.darkened(0.1), true)
-	node.draw_line(shoulder + Vector2(-10, 2) * draw_scale, shoulder + Vector2(-25, 17) * draw_scale, body, 5.0 * draw_scale)
-	node.draw_line(shoulder + Vector2(8, 1) * draw_scale, shoulder + Vector2(23, 12) * draw_scale, body, 4.5 * draw_scale)
-	node.draw_line(hip + Vector2(-7, 22) * draw_scale, hip + Vector2(-18, 45) * draw_scale, body, 5.0 * draw_scale)
-	node.draw_line(hip + Vector2(5, 23) * draw_scale, hip + Vector2(17, 43) * draw_scale, body, 5.0 * draw_scale)
-	node.draw_line(hip + Vector2(-18, 45) * draw_scale, hip + Vector2(-27, 45) * draw_scale, body, 4.0 * draw_scale)
-	node.draw_line(hip + Vector2(17, 43) * draw_scale, hip + Vector2(27, 43) * draw_scale, body, 4.0 * draw_scale)
+	var unit: float = maxf(2.0, 3.0 * draw_scale)
+	var sway: float = roundf(sin(menu_time * 2.1 + seed) * unit)
+	var origin := pos + Vector2(-8.0 * unit + sway, -20.0 * unit)
+	var body := Color("#111416")
+	var wound := RED.lightened(0.12)
+	var eye := Color("#e8e0d2")
+	_pixel_rect(node, origin, 1, 19, 7, 2, unit, Color(0, 0, 0, 0.36))
+	_pixel_rect(node, origin, 8, 19, 6, 2, unit, Color(0, 0, 0, 0.36))
+	_pixel_rect(node, origin, 5, 0, 7, 1, unit, body)
+	_pixel_rect(node, origin, 3, 1, 10, 2, unit, body)
+	_pixel_rect(node, origin, 2, 3, 12, 4, unit, body)
+	_pixel_rect(node, origin, 3, 7, 9, 2, unit, body)
+	_pixel_rect(node, origin, 0, 3, 2, 1, unit, body)
+	_pixel_rect(node, origin, 0, 5, 2, 1, unit, body)
+	_pixel_rect(node, origin, 6, 4, 2, 2, unit, eye)
+	_pixel_rect(node, origin, 11, 4, 2, 2, unit, eye)
+	_pixel_rect(node, origin, 7, 8, 1, 1, unit, eye)
+	_pixel_rect(node, origin, 10, 8, 1, 1, unit, eye)
+	_pixel_rect(node, origin, 12, 8, 1, 1, unit, eye)
+	_pixel_rect(node, origin, 4, 10, 8, 7, unit, body)
+	_pixel_rect(node, origin, 0, 11, 3, 2, unit, body)
+	_pixel_rect(node, origin, -1, 13, 2, 4, unit, body)
+	_pixel_rect(node, origin, 12, 11, 5, 2, unit, body)
+	_pixel_rect(node, origin, 16, 13, 2, 2, unit, body)
+	_pixel_rect(node, origin, 17, 15, 1, 2, unit, body)
+	_pixel_rect(node, origin, 7, 11, 1, 1, unit, wound)
+	_pixel_rect(node, origin, 9, 12, 1, 1, unit, wound)
+	_pixel_rect(node, origin, 11, 14, 1, 1, unit, wound)
+	_pixel_rect(node, origin, 5, 17, 3, 6, unit, body)
+	_pixel_rect(node, origin, 10, 17, 3, 6, unit, body)
+	_pixel_rect(node, origin, 4, 22, 5, 2, unit, body)
+	_pixel_rect(node, origin, 10, 22, 5, 2, unit, body)
 
 func _draw_menu_survivor(node: Control, pos: Vector2, draw_scale: float, seed: float) -> void:
-	var bob: float = sin(menu_time * 2.8 + seed) * 1.5
-	var boot := Color("#060809")
-	var coat := Color("#151b20")
-	var vest := ORANGE.darkened(0.25)
+	var unit: float = maxf(2.0, 3.1 * draw_scale)
+	var bob: float = roundf(sin(menu_time * 2.8 + seed) * 1.3)
+	var origin := pos + Vector2(-7.5 * unit, -20.0 * unit + bob)
 	var skin := Color("#b9825c")
-	var head := pos + Vector2(0, -39.0 + bob) * draw_scale
-	var torso := pos + Vector2(0, -17.0 + bob) * draw_scale
-	var body_rect := Rect2(torso + Vector2(-11, -10) * draw_scale, Vector2(22, 33) * draw_scale)
-	node.draw_circle(head + Vector2(1, 2) * draw_scale, 8.8 * draw_scale, Color(0, 0, 0, 0.48))
-	node.draw_circle(head, 8.0 * draw_scale, skin.darkened(0.08))
-	node.draw_rect(Rect2(head + Vector2(-9, -9) * draw_scale, Vector2(18, 5) * draw_scale), coat.lightened(0.1), true)
-	node.draw_rect(body_rect, coat, true)
-	node.draw_rect(Rect2(body_rect.position + Vector2(3, 4) * draw_scale, Vector2(body_rect.size.x - 6.0 * draw_scale, 9.0 * draw_scale)), vest, true)
-	node.draw_line(torso + Vector2(-11, -1) * draw_scale, torso + Vector2(-27, 11) * draw_scale, coat, 5.0 * draw_scale)
-	node.draw_line(torso + Vector2(10, -1) * draw_scale, torso + Vector2(24, 6) * draw_scale, coat, 5.0 * draw_scale)
-	var weapon_start := torso + Vector2(20, -7) * draw_scale
-	var weapon_end := torso + Vector2(42, -18) * draw_scale
-	node.draw_line(weapon_start, weapon_end, Color("#2f3b42"), 4.0 * draw_scale)
-	node.draw_line(weapon_start + Vector2(8, 4) * draw_scale, weapon_end + Vector2(11, 2) * draw_scale, Color("#0a0d10"), 2.0 * draw_scale)
-	node.draw_line(torso + Vector2(-7, 21) * draw_scale, torso + Vector2(-13, 48) * draw_scale, coat.darkened(0.08), 5.0 * draw_scale)
-	node.draw_line(torso + Vector2(7, 21) * draw_scale, torso + Vector2(12, 48) * draw_scale, coat.darkened(0.08), 5.0 * draw_scale)
-	node.draw_line(torso + Vector2(-13, 48) * draw_scale, torso + Vector2(-23, 48) * draw_scale, boot, 5.0 * draw_scale)
-	node.draw_line(torso + Vector2(12, 48) * draw_scale, torso + Vector2(22, 48) * draw_scale, boot, 5.0 * draw_scale)
+	var hair := Color("#1b1511")
+	var jacket := Color("#151b20")
+	var vest := ORANGE.darkened(0.18)
+	var trouser := Color("#1b2529")
+	var boot := Color("#050607")
+	_pixel_rect(node, origin, 3, 19, 5, 2, unit, Color(0, 0, 0, 0.34))
+	_pixel_rect(node, origin, 8, 19, 5, 2, unit, Color(0, 0, 0, 0.34))
+	_pixel_rect(node, origin, 4, 0, 7, 1, unit, hair.darkened(0.1))
+	_pixel_rect(node, origin, 3, 1, 9, 2, unit, hair)
+	_pixel_rect(node, origin, 5, 3, 6, 4, unit, skin)
+	_pixel_rect(node, origin, 5, 5, 1, 1, unit, RED.lightened(0.15))
+	_pixel_rect(node, origin, 10, 5, 1, 1, unit, RED.lightened(0.15))
+	_pixel_rect(node, origin, 7, 7, 3, 1, unit, skin.darkened(0.25))
+	_pixel_rect(node, origin, 3, 9, 9, 6, unit, jacket)
+	_pixel_rect(node, origin, 5, 9, 5, 5, unit, vest)
+	_pixel_rect(node, origin, 2, 10, 2, 5, unit, skin.darkened(0.05))
+	_pixel_rect(node, origin, 12, 10, 2, 5, unit, skin.darkened(0.05))
+	_pixel_rect(node, origin, 12, 8, 1, 8, unit, RED.darkened(0.2))
+	_pixel_rect(node, origin, 13, 7, 1, 2, unit, RED)
+	_pixel_rect(node, origin, 4, 15, 4, 5, unit, trouser)
+	_pixel_rect(node, origin, 9, 15, 4, 5, unit, trouser)
+	_pixel_rect(node, origin, 3, 19, 5, 2, unit, boot)
+	_pixel_rect(node, origin, 9, 19, 5, 2, unit, boot)
+
+func _pixel_rect(node: Control, origin: Vector2, x: float, y: float, w: float, h: float, unit: float, color: Color) -> void:
+	node.draw_rect(Rect2(origin + Vector2(x, y) * unit, Vector2(w, h) * unit), color, true)
 
 func _draw_menu_barricade(node: Control, view_size: Vector2) -> void:
 	var base_y: float = view_size.y * 0.82
